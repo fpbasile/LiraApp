@@ -2,9 +2,13 @@ package com.app.lira.ui.screens
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -15,7 +19,9 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
@@ -24,145 +30,137 @@ import androidx.navigation.NavController
 import com.app.lira.R
 import com.app.lira.data.remote.SupabaseClient
 import com.app.lira.data.repository.AuthRepository
+import com.app.lira.ui.components.LiraTextField
+import com.app.lira.ui.theme.LiraBackground
+import com.app.lira.ui.theme.LiraTextSecondary
 import kotlinx.coroutines.launch
-
 
 
 @Composable
 fun LoginScreen(navController: NavController) {
-    val client = SupabaseClient.client
     val scope = rememberCoroutineScope()
 
-
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var message by remember { mutableStateOf("") }
-
-
-    val backgroundColor = Color(0xFF121417)
-    val borderColor = Color(0xFF3D4754)
-    val textColor = Color.White.copy(alpha = 0.5f)
+    // 1. States
+    var email by remember { mutableStateOf(TextFieldValue("")) }
+    var password by remember { mutableStateOf(TextFieldValue("")) }
+    var isLoginMode by remember { mutableStateOf(true) } // Toggle between Login and Sign Up
+    var isLoading by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(backgroundColor),
+            .background(LiraBackground), 
         contentAlignment = Alignment.Center
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 40.dp, vertical = 40.dp),
+                .padding(horizontal = 40.dp)
+                .verticalScroll(rememberScrollState()), 
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween
+            verticalArrangement = Arrangement.Center
         ) {
-            Spacer(modifier = Modifier.height(40.dp))
-
             // --- Logo ---
             Image(
                 painter = painterResource(id = R.drawable.lira_logo),
                 contentDescription = "Lira Logo",
                 modifier = Modifier
-                    .width(400.dp)
-                    .height(400.dp)
-                    .padding(bottom = 60.dp),
+                    .size(300.dp) // Adjusted size for better layout balance
+                    .padding(bottom = 32.dp),
                 contentScale = ContentScale.Fit
             )
 
-            // --- Input Fields ---
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.offset(y = (-40).dp)
-            ) {
-                OutlinedTextField(
-                    value = email,
-                    onValueChange = { email = it },
-                    placeholder = {
-                        Text("Username", color = textColor, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                    },
-                    shape = RoundedCornerShape(50.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = borderColor,
-                        unfocusedBorderColor = borderColor,
-                        cursorColor = Color.White,
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 10.dp)
-                        .height(55.dp)
-                )
+            Text(
+                text = if (isLoginMode) "Welcome Back" else "Create Account",
+                color = Color.White,
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold
+            )
 
-                OutlinedTextField(
-                    value = password,
-                    onValueChange = { password = it },
-                    placeholder = {
-                        Text("Password", color = textColor, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                    },
-                    visualTransformation = PasswordVisualTransformation(),
-                    shape = RoundedCornerShape(50.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = borderColor,
-                        unfocusedBorderColor = borderColor,
-                        cursorColor = Color.White,
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 10.dp)
-                        .height(55.dp)
-                )
+            Spacer(modifier = Modifier.height(32.dp))
 
+            // --- Input Fields  ---
+            LiraTextField(
+                value = email,
+                onValueChange = { email = it},
+                placeholder = "Email",
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            LiraTextField(
+                value = password,
+                onValueChange = { password = it },
+                placeholder = "Password",
+                visualTransformation = PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+            )
+
+            // --- Error Message ---
+            errorMessage?.let {
+                Spacer(Modifier.height(16.dp))
+                Text(it, color = Color.Red, fontSize = 14.sp, textAlign = TextAlign.Center)
+            }
+
+            // --- Action Button ---
+            Spacer(modifier = Modifier.height(32.dp))
+
+            if (isLoading) {
+                CircularProgressIndicator(color = Color.White)
+            } else {
                 Button(
                     onClick = {
                         scope.launch {
-                            val result = AuthRepository.signUp(email, password)
-                            message = result.getOrElse { "Login failed: ${it.message}" }
-                            if (result.isSuccess) {
-                                navController.navigate("addPayed") {
-                                    popUpTo("login") { inclusive = true } // removes login from back stack
-                                }
+                            isLoading = true
+                            errorMessage = null
 
+                            // Call Sign In or Sign Up based on mode
+                            val result = if (isLoginMode) {
+                                AuthRepository.signIn(email.text, password.text)
+                            } else {
+                                AuthRepository.signUp(email.text, password.text)
+                            }
+
+                            isLoading = false
+
+                            if (result.isSuccess) {
+                                navController.navigate("add_payed") {
+                                    popUpTo("login") { inclusive = true }
+                                }
+                            } else {
+                                errorMessage = result.exceptionOrNull()?.message ?: "An error occurred"
                             }
                         }
                     },
-                    shape = CircleShape,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-                    border = ButtonDefaults.outlinedButtonBorder.copy(
-                        width = 1.dp,
-                        brush = androidx.compose.ui.graphics.SolidColor(borderColor)
-                    ),
-                    modifier = Modifier
-                        .padding(top = 30.dp)
-                        .width(120.dp)
-                        .height(40.dp)
+                    modifier = Modifier.width(180.dp).height(50.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+                    shape = RoundedCornerShape(16.dp)
                 ) {
-                    Text("Log in", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                }
-
-                if (message.isNotEmpty()) {
-                    Spacer(Modifier.height(16.dp))
-                    Text(message, textAlign = TextAlign.Center, color = Color.White)
+                    Text(
+                        text = if (isLoginMode) "LOG IN" else "SIGN UP",
+                        color = Color.Black,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
 
-            // --- Bottom Text ---
+            // --- Toggle Bottom Text ---
+            Spacer(modifier = Modifier.height(24.dp))
             Text(
-                buildAnnotatedString {
-                    append("No account? ")
+                text = buildAnnotatedString {
+                    append(if (isLoginMode) "No account? " else "Already have an account? ")
                     withStyle(style = SpanStyle(fontWeight = FontWeight.Bold, color = Color.White)) {
-                        append("Create one")
+                        append(if (isLoginMode) "Create one" else "Log in")
                     }
                 },
-                color = textColor,
+                color = LiraTextSecondary,
                 fontSize = 14.sp,
-                textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp)
-                    //.clickable { onCreateAccountClick() }
+                modifier = Modifier.clickable {
+                    isLoginMode = !isLoginMode // Toggles the UI mode
+                    errorMessage = null
+                }
             )
         }
     }

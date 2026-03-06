@@ -3,6 +3,8 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.serialization")
     id("org.jetbrains.kotlin.plugin.compose")
+    id("com.google.android.libraries.mapsplatform.secrets-gradle-plugin")
+
 }
 
 android {
@@ -40,7 +42,11 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
+
     }
+
+
 
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.4"
@@ -79,12 +85,16 @@ dependencies {
 
     // --- KotlinX Serialization ---
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
+    implementation("io.github.jan-tennert.supabase:compose-auth:3.2.5")
+
+
 
     // --- Utilities ---
     implementation("com.google.accompanist:accompanist-systemuicontroller:0.33.2-alpha")
     implementation("androidx.navigation:navigation-compose:2.8.0")
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.material3)
+    implementation(libs.androidx.ui.graphics)
 
 
     // --- Testing ---

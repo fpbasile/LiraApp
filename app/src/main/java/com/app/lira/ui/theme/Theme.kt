@@ -12,13 +12,13 @@ import androidx.compose.material3.Typography
 import com.app.lira.R
 
 private val DarkColorScheme = darkColorScheme(
-    primary = PrimaryDark,
+    primary = LiraBackground,
     secondary = BorderGray,
-    background = PrimaryDark,
-    surface = PrimaryDark,
+    background = LiraBackground,
+    surface = LiraBackground,
     onPrimary = TextWhite,
-    onBackground = TextWhite50,
-    onSurface = TextWhite50
+    onBackground = LiraTextSecondary,
+    onSurface = LiraTextSecondary
 )
 
 val InterFont = FontFamily(
@@ -36,7 +36,7 @@ val Typo = Typography(
     labelLarge = TextStyle(
         fontFamily = InterFont,
         fontSize = 14.sp,
-        color = TextWhite50
+        color = LiraTextSecondary
     ),
     titleLarge = TextStyle(
         fontFamily = InterFont,

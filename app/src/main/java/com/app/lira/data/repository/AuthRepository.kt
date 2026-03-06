@@ -37,7 +37,7 @@ object AuthRepository {
         }
     }
 
-    // --- Sign out function (optional) ---
+    // --- Sign out function  ---
     suspend fun signOut(): Result<String> = withContext(Dispatchers.IO) {
         return@withContext try {
             client.auth.signOut()
