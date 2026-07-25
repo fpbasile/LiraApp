@@ -50,6 +50,18 @@ object AuthRepository {
         }
     }
 
+    // --- Change password for the current session ---
+    suspend fun updatePassword(newPassword: String): Result<String> = withContext(Dispatchers.IO) {
+        return@withContext try {
+            client.auth.updateUser {
+                password = newPassword
+            }
+            Result.success("Password updated successfully!")
+        } catch (e: Exception) {
+            Result.failure(Exception(friendlyAuthError(e)))
+        }
+    }
+
     // Supabase's raw exception messages include the error code, URL, headers and
     // HTTP method — not fit to show a user. Map known exception types to a short,
     // human-readable sentence instead.

@@ -26,10 +26,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.app.lira.R
+import com.app.lira.data.HomeDataCache
 import com.app.lira.data.model.Category
 import com.app.lira.data.repository.CategoryRepository
+import com.app.lira.data.repository.CategoryColorPalette
 import com.app.lira.data.repository.DailyLimitRepository
 import com.app.lira.data.repository.TransactionRepository
+import com.app.lira.data.repository.toUiCategories
 import com.app.lira.navigation.Routes
 import com.app.lira.ui.components.*
 import com.app.lira.ui.theme.*
@@ -39,10 +42,6 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 
-private val CategoryColorPalette = listOf(
-    0xFFB71C1CL, 0xFF00695CL, 0xFF0D47A1L, 0xFF827717L, 0xFFE65100L,
-    0xFF00838FL, 0xFFAD1457L, 0xFF4A148CL, 0xFF1B5E20L, 0xFF33691EL
-)
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun AddPayedScreen(navController: NavController) {
@@ -58,13 +57,13 @@ fun AddPayedScreen(navController: NavController) {
 
     // Categories must come from the DB — transactions.category_id is a foreign key
     // into "category", so any client-only placeholder id would fail that constraint.
-    var categories by remember { mutableStateOf<List<Category>>(emptyList()) }
+    // Seeded from HomeDataCache (prefetched in NavGraph) so there's no empty flash on first paint.
+    var categories by remember { mutableStateOf(HomeDataCache.categories) }
 
     suspend fun refreshCategories() {
         CategoryRepository.getCategories().onSuccess { rows ->
-            categories = rows.mapIndexed { index, row ->
-                Category(id = row.id, name = row.name, colorHex = CategoryColorPalette[index % CategoryColorPalette.size])
-            }
+            categories = rows.toUiCategories()
+            HomeDataCache.categories = categories
         }
     }
 
@@ -75,14 +74,14 @@ fun AddPayedScreen(navController: NavController) {
     var isSavingTransaction by remember { mutableStateOf(false) }
     var transactionError by remember { mutableStateOf<String?>(null) }
 
-    var todaySpent by remember { mutableStateOf(0.0) }
-    var todayReceived by remember { mutableStateOf(0.0) }
-    var dailyLimit by remember { mutableStateOf(DailyLimitRepository.DEFAULT_DAILY_LIMIT) }
+    var todaySpent by remember { mutableStateOf(HomeDataCache.todaySpent) }
+    var todayReceived by remember { mutableStateOf(HomeDataCache.todayReceived) }
+    var dailyLimit by remember { mutableStateOf(HomeDataCache.dailyLimit) }
 
     suspend fun refreshOverview() {
-        TransactionRepository.getTodaySpent().onSuccess { todaySpent = it }
-        TransactionRepository.getTodayReceived().onSuccess { todayReceived = it }
-        DailyLimitRepository.getDailyLimit().onSuccess { dailyLimit = it }
+        TransactionRepository.getTodaySpent().onSuccess { todaySpent = it; HomeDataCache.todaySpent = it }
+        TransactionRepository.getTodayReceived().onSuccess { todayReceived = it; HomeDataCache.todayReceived = it }
+        DailyLimitRepository.getDailyLimit().onSuccess { dailyLimit = it; HomeDataCache.dailyLimit = it }
     }
 
     LaunchedEffect(Unit) {
@@ -171,7 +170,7 @@ fun AddPayedScreen(navController: NavController) {
                 .verticalScroll(rememberScrollState())
                 .imePadding()
         ) {
-            TopLogoBar()
+            TopLogoBar(onSettingsClick = { navController.navigate(Routes.SETTINGS) })
             Spacer(Modifier.height(16.dp))
 
             Row(
@@ -586,7 +585,7 @@ private fun AddCategoryDialog(
 }
 
 @Composable
-private fun TopLogoBar() {
+private fun TopLogoBar(onSettingsClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -608,7 +607,7 @@ private fun TopLogoBar() {
             tint = LiraTextPrimary,
             modifier = Modifier
                 .size(24.dp)
-                .clickable { /* Handle settings click */ }
+                .clickable { onSettingsClick() }
         )
     }
 }
