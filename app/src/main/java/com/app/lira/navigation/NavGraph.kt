@@ -21,12 +21,14 @@ import androidx.navigation.compose.composable
 import com.app.lira.data.remote.SupabaseClient
 import com.app.lira.ui.screens.LoginScreen
 import com.app.lira.ui.screens.AddPayedScreen
+import com.app.lira.ui.screens.TransactionsScreen
 import com.app.lira.ui.theme.LiraBackground
 import io.github.jan.supabase.auth.auth
 
 object Routes {
     const val LOGIN = "login"
     const val ADD_PAYED = "add_payed"
+    const val TRANSACTIONS = "transactions"
 }
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -38,7 +40,8 @@ fun NavGraph(navController: NavHostController) {
 
     // This runs once when the app starts
     LaunchedEffect(Unit) {
-        // Wait a tiny bit for the persistence to load
+        // Wait for the Auth plugin to finish restoring the persisted session
+        SupabaseClient.client.auth.awaitInitialization()
         val session = SupabaseClient.client.auth.currentSessionOrNull()
         if (session != null) {
             startDestination = Routes.ADD_PAYED
@@ -55,6 +58,7 @@ fun NavGraph(navController: NavHostController) {
         NavHost(navController = navController, startDestination = startDestination) {
             composable(Routes.LOGIN) { LoginScreen(navController) }
             composable(Routes.ADD_PAYED) { AddPayedScreen(navController) }
+            composable(Routes.TRANSACTIONS) { TransactionsScreen(navController) }
         }
     }
 }

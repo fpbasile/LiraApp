@@ -2,6 +2,7 @@ package com.app.lira.ui.screens
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -13,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -86,7 +88,7 @@ fun LoginScreen(navController: NavController) {
             // --- Input Fields  ---
             LiraTextField(
                 value = email,
-                onValueChange = { email = it},
+                onValueChange = { email = it; errorMessage = null },
                 placeholder = "Email",
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
             )
@@ -95,7 +97,7 @@ fun LoginScreen(navController: NavController) {
 
             LiraTextField(
                 value = password,
-                onValueChange = { password = it },
+                onValueChange = { password = it; errorMessage = null },
                 placeholder = "Password",
                 visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -115,7 +117,23 @@ fun LoginScreen(navController: NavController) {
             // --- Error Message ---
             errorMessage?.let {
                 Spacer(Modifier.height(16.dp))
-                Text(it, color = Color.Red, fontSize = 14.sp, textAlign = TextAlign.Center)
+                val errorColor = Color(0xFFE53935)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(errorColor.copy(alpha = 0.12f))
+                        .border(1.dp, errorColor.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                ) {
+                    Text(
+                        text = it,
+                        color = errorColor,
+                        fontSize = 14.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
 
             // --- Action Button ---

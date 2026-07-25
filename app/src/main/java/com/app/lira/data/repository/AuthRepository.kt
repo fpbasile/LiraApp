@@ -3,9 +3,12 @@ package com.app.lira.data.repository
 
 import com.app.lira.data.remote.SupabaseClient
 import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.auth.exception.AuthRestException
 import io.github.jan.supabase.auth.providers.builtin.Email
+import io.github.jan.supabase.exceptions.HttpRequestException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.io.IOException
 
 object AuthRepository {
 
@@ -20,7 +23,7 @@ object AuthRepository {
             }
             Result.success("Account created successfully!")
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(Exception(friendlyAuthError(e)))
         }
     }
 
@@ -33,7 +36,7 @@ object AuthRepository {
             }
             Result.success("Logged in successfully!")
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(Exception(friendlyAuthError(e)))
         }
     }
 
@@ -43,7 +46,16 @@ object AuthRepository {
             client.auth.signOut()
             Result.success("Signed out successfully!")
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(Exception(friendlyAuthError(e)))
         }
+    }
+
+    // Supabase's raw exception messages include the error code, URL, headers and
+    // HTTP method — not fit to show a user. Map known exception types to a short,
+    // human-readable sentence instead.
+    private fun friendlyAuthError(e: Throwable): String = when (e) {
+        is AuthRestException -> e.errorDescription
+        is HttpRequestException, is IOException -> "Can't reach the server. Check your internet connection."
+        else -> "Something went wrong. Please try again."
     }
 }

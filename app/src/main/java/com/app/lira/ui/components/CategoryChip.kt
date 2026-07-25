@@ -14,10 +14,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shadow
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -44,11 +41,11 @@ fun CategoryChip(
 
     Box(
         modifier = modifier
-            .height(40.dp)
-            .clip(RoundedCornerShape(20.dp))
+            .height(34.dp)
+            .clip(RoundedCornerShape(17.dp))
             .background(Color(category.colorHex))
             .clickable { onClick() }
-            .border(width = borderWidth, color = borderColor, shape = RoundedCornerShape(20.dp)),
+            .border(width = borderWidth, color = borderColor, shape = RoundedCornerShape(17.dp)),
         contentAlignment = Alignment.Center
     ) {
         Text(
@@ -56,10 +53,7 @@ fun CategoryChip(
             color = Color.White,
             fontWeight = FontWeight.SemiBold,
             fontSize = 14.sp,
-            textAlign = TextAlign.Center,
-            style = TextStyle(
-                shadow = Shadow(color = Color.Black, offset = Offset(0f, 1f), blurRadius = 8f)
-            )
+            textAlign = TextAlign.Center
         )
     }
 }
