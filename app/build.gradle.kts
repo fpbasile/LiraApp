@@ -13,7 +13,7 @@ android {
 
     defaultConfig {
         applicationId = "com.app.lira"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
@@ -43,13 +43,6 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
-
-    }
-
-
-
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.4"
     }
 
     packaging {
@@ -71,7 +64,7 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.9.2")
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-tooling-preview")
-    implementation("androidx.compose.material3:material3:1.3.0")
+    implementation("androidx.compose.material3:material3")
 
     // --- Supabase SDK ---
     implementation(platform("io.github.jan-tennert.supabase:bom:3.2.5"))
@@ -92,9 +85,10 @@ dependencies {
     // --- Utilities ---
     implementation("com.google.accompanist:accompanist-systemuicontroller:0.33.2-alpha")
     implementation("androidx.navigation:navigation-compose:2.8.0")
-    implementation(libs.androidx.compose.foundation)
+    implementation(libs.androidx.foundation)
     implementation(libs.androidx.material3)
     implementation(libs.androidx.ui.graphics)
+    implementation(libs.androidx.compose.ui.geometry)
 
 
     // --- Testing ---

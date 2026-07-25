@@ -22,14 +22,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.app.lira.R
-import com.app.lira.data.remote.SupabaseClient
 import com.app.lira.data.repository.AuthRepository
+import com.app.lira.navigation.Routes
 import com.app.lira.ui.components.LiraTextField
 import com.app.lira.ui.theme.LiraBackground
 import com.app.lira.ui.theme.LiraTextSecondary
@@ -43,7 +44,8 @@ fun LoginScreen(navController: NavController) {
     // 1. States
     var email by remember { mutableStateOf(TextFieldValue("")) }
     var password by remember { mutableStateOf(TextFieldValue("")) }
-    var isLoginMode by remember { mutableStateOf(true) } // Toggle between Login and Sign Up
+    var isLoginMode by remember { mutableStateOf(true) }
+    var showPassword by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
@@ -57,7 +59,8 @@ fun LoginScreen(navController: NavController) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 40.dp)
-                .verticalScroll(rememberScrollState()), 
+                .verticalScroll(rememberScrollState())
+                .imePadding(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -94,8 +97,19 @@ fun LoginScreen(navController: NavController) {
                 value = password,
                 onValueChange = { password = it },
                 placeholder = "Password",
-                visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+                visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                trailingIcon = {
+                    IconButton(onClick = { showPassword = !showPassword }) {
+                        Icon(
+                            painter = painterResource(
+                                if (showPassword) R.drawable.ic_eye_off else R.drawable.ic_eye
+                            ),
+                            contentDescription = if (showPassword) "Hide password" else "Show password",
+                            tint = LiraTextSecondary
+                        )
+                    }
+                }
             )
 
             // --- Error Message ---
@@ -126,8 +140,8 @@ fun LoginScreen(navController: NavController) {
                             isLoading = false
 
                             if (result.isSuccess) {
-                                navController.navigate("add_payed") {
-                                    popUpTo("login") { inclusive = true }
+                                navController.navigate(Routes.ADD_PAYED) {
+                                    popUpTo(Routes.LOGIN) { inclusive = true }
                                 }
                             } else {
                                 errorMessage = result.exceptionOrNull()?.message ?: "An error occurred"

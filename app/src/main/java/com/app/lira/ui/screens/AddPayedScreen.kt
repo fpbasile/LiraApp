@@ -2,7 +2,11 @@ package com.app.lira.ui.screens
 
 import android.os.Build
 import androidx.annotation.RequiresApi
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.*
 import androidx.compose.foundation.shape.*
@@ -12,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -21,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.app.lira.R
 import com.app.lira.data.model.Category
+import com.app.lira.navigation.Routes
 import com.app.lira.ui.components.*
 import com.app.lira.ui.theme.*
 import java.time.LocalDate
@@ -53,7 +59,17 @@ fun AddPayedScreen(navController: NavController) {
 
     Scaffold(
         containerColor = LiraBackground,
-        bottomBar = { LiraBottomNavBar() }
+        bottomBar = {
+            LiraBottomNavBar(
+                currentRoute = Routes.ADD_PAYED,
+                onNavigate = { route ->
+                    navController.navigate(route) {
+                        // This prevents multiple copies of the same screen on the backstack
+                        launchSingleTop = true
+                    }
+                }
+            )
+        }
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -61,6 +77,7 @@ fun AddPayedScreen(navController: NavController) {
                 .padding(innerPadding)
                 .padding(horizontal = 15.dp)
                 .verticalScroll(rememberScrollState())
+                .imePadding()
         ) {
             Spacer(Modifier.height(16.dp))
             TopLogoBar()
@@ -165,17 +182,27 @@ private fun AddPaidForm(
             }
         }
 
-        // Pager Indicators (Dots)
+        // Pager Indicators (animated pills)
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
             repeat(pagerState.pageCount) { iteration ->
-                val color = if (pagerState.currentPage == iteration) Color.White else LiraBorder
+                val isActive = pagerState.currentPage == iteration
+                val color by animateColorAsState(
+                    targetValue = if (isActive) Color.White else LiraBorder,
+                    animationSpec = tween(250),
+                    label = "dot_color"
+                )
+                val width by animateDpAsState(
+                    targetValue = if (isActive) 16.dp else 6.dp,
+                    animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                    label = "dot_width"
+                )
                 Box(
                     modifier = Modifier
-                        .padding(2.dp)
-                        .clip(CircleShape)
+                        .padding(horizontal = 2.dp)
+                        .clip(RoundedCornerShape(3.dp))
                         .background(color)
-                        .size(6.dp)
+                        .size(width = width, height = 6.dp)
                 )
             }
         }
@@ -199,9 +226,20 @@ private fun AddPaidForm(
         Spacer(Modifier.height(24.dp))
 
         Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            val addInteraction = remember { MutableInteractionSource() }
+            val isPressed by addInteraction.collectIsPressedAsState()
+            val scale by animateFloatAsState(
+                targetValue = if (isPressed) 0.95f else 1f,
+                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                label = "btn_scale"
+            )
             Button(
                 onClick = { /* Logic */ },
-                modifier = Modifier.width(200.dp).height(50.dp),
+                interactionSource = addInteraction,
+                modifier = Modifier
+                    .width(200.dp)
+                    .height(50.dp)
+                    .graphicsLayer(scaleX = scale, scaleY = scale),
                 colors = ButtonDefaults.buttonColors(containerColor = Color.White),
                 shape = RoundedCornerShape(16.dp)
             ) {

@@ -23,7 +23,8 @@ fun LiraTextField(
     placeholder: String,
     modifier: Modifier = Modifier,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
-    visualTransformation: VisualTransformation = VisualTransformation.None // Add this
+    visualTransformation: VisualTransformation = VisualTransformation.None,
+    trailingIcon: @Composable (() -> Unit)? = null
 ) {
     OutlinedTextField(
         value = value,
@@ -35,6 +36,7 @@ fun LiraTextField(
         singleLine = true,
         visualTransformation = visualTransformation,
         keyboardOptions = keyboardOptions,
+        trailingIcon = trailingIcon,
         colors = TextFieldDefaults.colors(
             focusedContainerColor = Color.Transparent,
             unfocusedContainerColor = Color.Transparent,
