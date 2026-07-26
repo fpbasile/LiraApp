@@ -2,9 +2,14 @@ package com.app.lira.navigation
 
 import android.os.Build
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -14,21 +19,26 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.app.lira.R
 import com.app.lira.data.HomeDataCache
 import com.app.lira.data.remote.SupabaseClient
 import com.app.lira.data.repository.CategoryRepository
-import com.app.lira.data.repository.DailyLimitRepository
+import com.app.lira.data.repository.SpendingLimitRepository
 import com.app.lira.data.repository.TransactionRepository
 import com.app.lira.data.repository.toUiCategories
 import com.app.lira.ui.screens.LoginScreen
 import com.app.lira.ui.screens.AddPayedScreen
+import com.app.lira.ui.screens.ManageCategoriesScreen
+import com.app.lira.ui.screens.RecurringScreen
 import com.app.lira.ui.screens.SettingsScreen
 import com.app.lira.ui.screens.TransactionsScreen
 import com.app.lira.ui.theme.LiraBackground
+import com.app.lira.ui.theme.LiraTextSecondary
 import io.github.jan.supabase.auth.auth
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
@@ -38,6 +48,8 @@ object Routes {
     const val ADD_PAYED = "add_payed"
     const val TRANSACTIONS = "transactions"
     const val SETTINGS = "settings"
+    const val MANAGE_CATEGORIES = "manage_categories"
+    const val RECURRING = "recurring"
 }
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -60,7 +72,11 @@ fun NavGraph(navController: NavHostController) {
                 launch { CategoryRepository.getCategories().onSuccess { HomeDataCache.categories = it.toUiCategories() } }
                 launch { TransactionRepository.getTodaySpent().onSuccess { HomeDataCache.todaySpent = it } }
                 launch { TransactionRepository.getTodayReceived().onSuccess { HomeDataCache.todayReceived = it } }
-                launch { DailyLimitRepository.getDailyLimit().onSuccess { HomeDataCache.dailyLimit = it } }
+                launch { SpendingLimitRepository.getDailyLimit().onSuccess { HomeDataCache.dailyLimit = it } }
+                launch { TransactionRepository.getWeekSpent().onSuccess { HomeDataCache.weekSpent = it } }
+                launch { TransactionRepository.getMonthSpent().onSuccess { HomeDataCache.monthSpent = it } }
+                launch { SpendingLimitRepository.getLimit(SpendingLimitRepository.PERIOD_WEEKLY).onSuccess { HomeDataCache.weekLimit = it } }
+                launch { SpendingLimitRepository.getLimit(SpendingLimitRepository.PERIOD_MONTHLY).onSuccess { HomeDataCache.monthLimit = it } }
             }
             startDestination = Routes.ADD_PAYED
         }
@@ -68,16 +84,34 @@ fun NavGraph(navController: NavHostController) {
     }
 
     if (isCheckingSession) {
-        // Show a blank screen or a simple loading splash while checking
-        Box(Modifier.fillMaxSize().background(LiraBackground), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator(color = Color.White)
-        }
+        SplashScreen()
     } else {
         NavHost(navController = navController, startDestination = startDestination) {
             composable(Routes.LOGIN) { LoginScreen(navController) }
             composable(Routes.ADD_PAYED) { AddPayedScreen(navController) }
             composable(Routes.TRANSACTIONS) { TransactionsScreen(navController) }
             composable(Routes.SETTINGS) { SettingsScreen(navController) }
+            composable(Routes.MANAGE_CATEGORIES) { ManageCategoriesScreen(navController) }
+            composable(Routes.RECURRING) { RecurringScreen(navController) }
+        }
+    }
+}
+
+@Composable
+private fun SplashScreen() {
+    Box(Modifier.fillMaxSize().background(LiraBackground), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Image(
+                painter = painterResource(id = R.drawable.lira_logo),
+                contentDescription = "Lira",
+                modifier = Modifier.height(64.dp)
+            )
+            Spacer(Modifier.height(32.dp))
+            CircularProgressIndicator(
+                modifier = Modifier.size(20.dp),
+                color = LiraTextSecondary,
+                strokeWidth = 2.dp
+            )
         }
     }
 }

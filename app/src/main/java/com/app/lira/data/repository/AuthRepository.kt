@@ -62,6 +62,21 @@ object AuthRepository {
         }
     }
 
+    // --- Change email for the current session ---
+    // Supabase sends a confirmation email (to the new address, and usually the old one too)
+    // before the change actually takes effect — this call succeeding does not mean the
+    // email has changed yet.
+    suspend fun updateEmail(newEmail: String): Result<String> = withContext(Dispatchers.IO) {
+        return@withContext try {
+            client.auth.updateUser {
+                email = newEmail
+            }
+            Result.success("Confirmation email sent.")
+        } catch (e: Exception) {
+            Result.failure(Exception(friendlyAuthError(e)))
+        }
+    }
+
     // Supabase's raw exception messages include the error code, URL, headers and
     // HTTP method — not fit to show a user. Map known exception types to a short,
     // human-readable sentence instead.

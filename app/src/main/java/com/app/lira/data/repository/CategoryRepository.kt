@@ -56,6 +56,30 @@ object CategoryRepository {
         }
     }
 
+    suspend fun updateCategory(id: Int, name: String): Result<CategoryRow> = withContext(Dispatchers.IO) {
+        return@withContext try {
+            val updated = client.postgrest["category"].update({
+                set("name", name)
+            }) {
+                filter { eq("id", id) }
+                select()
+            }.decodeSingle<CategoryRow>()
+            Result.success(updated)
+        } catch (e: Exception) {
+            Result.failure(Exception(friendlyDbError(e)))
+        }
+    }
+
+    /** Fails with a foreign-key error if any transaction still references this category. */
+    suspend fun deleteCategory(id: Int): Result<Unit> = withContext(Dispatchers.IO) {
+        return@withContext try {
+            client.postgrest["category"].delete { filter { eq("id", id) } }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(Exception(friendlyDbError(e)))
+        }
+    }
+
     private fun friendlyDbError(e: Throwable): String = when (e) {
         is PostgrestRestException -> e.error
         is HttpRequestException, is IOException -> "Can't reach the server. Check your internet connection."

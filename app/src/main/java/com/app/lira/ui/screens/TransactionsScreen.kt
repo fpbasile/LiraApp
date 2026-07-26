@@ -24,6 +24,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.app.lira.data.CurrencyPreference
 import com.app.lira.data.repository.TransactionDetail
 import com.app.lira.data.repository.TransactionRepository
 import com.app.lira.ui.components.LiraTextField
@@ -181,8 +182,9 @@ private fun TransactionRow(txn: TransactionDetail) {
         Spacer(Modifier.width(8.dp))
 
         Column(horizontalAlignment = Alignment.End) {
+            val symbol = CurrencyPreference.current.symbol
             Text(
-                text = String.format(if (isIncome) "+€%.2f" else "-€%.2f", txn.amount),
+                text = String.format(if (isIncome) "+%s%.2f" else "-%s%.2f", symbol, txn.amount),
                 color = accentColor,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 15.sp

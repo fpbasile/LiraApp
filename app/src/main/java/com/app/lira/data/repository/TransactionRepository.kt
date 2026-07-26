@@ -12,9 +12,11 @@ import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.ZoneId
+import java.time.temporal.TemporalAdjusters
 
 @Serializable
 private data class NewTransaction(
@@ -105,23 +107,29 @@ object TransactionRepository {
     }
 
     /** Sum of today's "payed" transactions for the current user, in the device's local day. */
-    suspend fun getTodaySpent(): Result<Double> = sumTodayByType(TYPE_PAYED)
+    suspend fun getTodaySpent(): Result<Double> = sumByType(TYPE_PAYED, todayRange())
 
     /** Sum of today's "received" transactions for the current user, in the device's local day. */
-    suspend fun getTodayReceived(): Result<Double> = sumTodayByType(TYPE_RECEIVED)
+    suspend fun getTodayReceived(): Result<Double> = sumByType(TYPE_RECEIVED, todayRange())
 
-    private suspend fun sumTodayByType(type: String): Result<Double> = withContext(Dispatchers.IO) {
+    /** Sum of this (Monday-starting) week's "payed" transactions for the current user. */
+    suspend fun getWeekSpent(): Result<Double> = sumByType(TYPE_PAYED, weekRange())
+
+    /** Sum of this calendar month's "payed" transactions for the current user. */
+    suspend fun getMonthSpent(): Result<Double> = sumByType(TYPE_PAYED, monthRange())
+
+    private suspend fun sumByType(type: String, range: Pair<String, String>): Result<Double> = withContext(Dispatchers.IO) {
         val userId = client.auth.currentUserOrNull()?.id
             ?: return@withContext Result.failure(Exception("You're not signed in."))
+        val (start, end) = range
 
         return@withContext try {
-            val (startOfDay, endOfDay) = todayRange()
             val rows = client.postgrest["transactions"].select(Columns.list("amount")) {
                 filter {
                     eq("user_id", userId)
                     eq("type", type)
-                    gte("date", startOfDay)
-                    lt("date", endOfDay)
+                    gte("date", start)
+                    lt("date", end)
                 }
             }.decodeList<TransactionAmountRow>()
 
@@ -135,10 +143,25 @@ object TransactionRepository {
     private fun todayRange(): Pair<String, String> {
         val zone = ZoneId.systemDefault()
         val today = LocalDate.now(zone)
-        val startOfDay = today.atStartOfDay(zone).toOffsetDateTime().toString()
-        val endOfDay = today.plusDays(1).atStartOfDay(zone).toOffsetDateTime().toString()
-        return startOfDay to endOfDay
+        return dateRange(zone, today, today.plusDays(1))
     }
+
+    /** [start, end) bounds of the current Monday-starting week in the device's zone. */
+    private fun weekRange(): Pair<String, String> {
+        val zone = ZoneId.systemDefault()
+        val startOfWeek = LocalDate.now(zone).with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+        return dateRange(zone, startOfWeek, startOfWeek.plusWeeks(1))
+    }
+
+    /** [start, end) bounds of the current calendar month in the device's zone. */
+    private fun monthRange(): Pair<String, String> {
+        val zone = ZoneId.systemDefault()
+        val startOfMonth = LocalDate.now(zone).withDayOfMonth(1)
+        return dateRange(zone, startOfMonth, startOfMonth.plusMonths(1))
+    }
+
+    private fun dateRange(zone: ZoneId, start: LocalDate, end: LocalDate): Pair<String, String> =
+        start.atStartOfDay(zone).toOffsetDateTime().toString() to end.atStartOfDay(zone).toOffsetDateTime().toString()
 
     private fun friendlyDbError(e: Throwable): String = when (e) {
         is PostgrestRestException -> e.error

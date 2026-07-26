@@ -1,7 +1,7 @@
 package com.app.lira.data
 
 import com.app.lira.data.model.Category
-import com.app.lira.data.repository.DailyLimitRepository
+import com.app.lira.data.repository.SpendingLimitRepository
 
 /**
  * In-memory snapshot of the home screen's data, populated during the app's session-check
@@ -12,5 +12,9 @@ object HomeDataCache {
     var categories: List<Category> = emptyList()
     var todaySpent: Double = 0.0
     var todayReceived: Double = 0.0
-    var dailyLimit: Double = DailyLimitRepository.DEFAULT_DAILY_LIMIT
+    var dailyLimit: Double = SpendingLimitRepository.DEFAULT_DAILY_LIMIT
+    var weekSpent: Double = 0.0
+    var weekLimit: Double? = null
+    var monthSpent: Double = 0.0
+    var monthLimit: Double? = null
 }

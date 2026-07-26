@@ -1,6 +1,11 @@
 package com.app.lira.ui.screens
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
@@ -22,22 +27,33 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.navigation.NavController
 import com.app.lira.R
+import com.app.lira.data.CurrencyPreference
 import com.app.lira.data.HomeDataCache
 import com.app.lira.data.model.Category
 import com.app.lira.data.repository.CategoryRepository
 import com.app.lira.data.repository.CategoryColorPalette
-import com.app.lira.data.repository.DailyLimitRepository
+import com.app.lira.data.repository.ReceiptRepository
+import com.app.lira.data.repository.SpendingLimitRepository
 import com.app.lira.data.repository.TransactionRepository
 import com.app.lira.data.repository.toUiCategories
 import com.app.lira.navigation.Routes
 import com.app.lira.ui.components.*
 import com.app.lira.ui.theme.*
 import androidx.compose.ui.text.style.TextAlign
+import com.app.lira.util.compressReceiptImage
+import com.app.lira.util.createReceiptImageUri
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
@@ -52,7 +68,7 @@ fun AddPayedScreen(navController: NavController) {
     var fromWho by remember { mutableStateOf(TextFieldValue("")) }
     var isReceivedMode by remember { mutableStateOf(false) }
 
-    // CHANGED: Match the ID type (Int) used in your list
+    // Match the ID type (Int) used in your list
     var selectedCategoryId by remember { mutableStateOf<Int?>(null) }
 
     // Categories must come from the DB — transactions.category_id is a foreign key
@@ -67,6 +83,90 @@ fun AddPayedScreen(navController: NavController) {
         }
     }
 
+    val context = LocalContext.current
+    var isProcessingReceipt by remember { mutableStateOf(false) }
+    var receiptError by remember { mutableStateOf<String?>(null) }
+    var receiptInfo by remember { mutableStateOf<String?>(null) }
+    var pendingReceiptUri by remember { mutableStateOf<Uri?>(null) }
+
+    fun processReceiptPhoto(uri: Uri) {
+        scope.launch {
+            isProcessingReceipt = true
+            receiptError = null
+            receiptInfo = null
+            try {
+                val base64 = withContext(Dispatchers.IO) { compressReceiptImage(context, uri) }
+                val result = ReceiptRepository.parseReceipt(
+                    imageBase64 = base64,
+                    mimeType = "image/jpeg",
+                    categoryNames = categories.map { it.name }
+                )
+                result.onSuccess { receipt ->
+                    receipt.amount?.let { amount = TextFieldValue(String.format("%.2f", it)) }
+                    val descriptionText = receipt.merchant ?: receipt.description
+                    descriptionText?.let { description = TextFieldValue(it) }
+                    receipt.suggestedCategory?.let { suggested ->
+                        categories.firstOrNull { it.name.equals(suggested, ignoreCase = true) }
+                            ?.let { selectedCategoryId = it.id }
+                    }
+                    receiptInfo = "Filled from receipt" + (receipt.merchant?.let { " — $it" } ?: "") + ". Please review."
+                }.onFailure { e ->
+                    receiptError = e.message ?: "Couldn't read the receipt"
+                }
+            } catch (e: Exception) {
+                receiptError = "Couldn't process the photo"
+            }
+            isProcessingReceipt = false
+        }
+    }
+
+    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+        val uri = pendingReceiptUri
+        if (success && uri != null) {
+            processReceiptPhoto(uri)
+        }
+    }
+
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) {
+            val uri = createReceiptImageUri(context)
+            pendingReceiptUri = uri
+            cameraLauncher.launch(uri)
+        } else {
+            receiptError = "Camera permission is needed to scan a receipt"
+        }
+    }
+
+    var showReceiptHintDialog by remember { mutableStateOf(false) }
+
+    fun beginReceiptCapture() {
+        val hasPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
+            PackageManager.PERMISSION_GRANTED
+        if (hasPermission) {
+            val uri = createReceiptImageUri(context)
+            pendingReceiptUri = uri
+            cameraLauncher.launch(uri)
+        } else {
+            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
+
+    val onScanReceiptClick: () -> Unit = {
+        receiptError = null
+        receiptInfo = null
+        showReceiptHintDialog = true
+    }
+
+    if (showReceiptHintDialog) {
+        ScanReceiptHintDialog(
+            onDismiss = { showReceiptHintDialog = false },
+            onConfirm = {
+                showReceiptHintDialog = false
+                beginReceiptCapture()
+            }
+        )
+    }
+
     var showAddCategoryDialog by remember { mutableStateOf(false) }
     var isSavingCategory by remember { mutableStateOf(false) }
     var addCategoryError by remember { mutableStateOf<String?>(null) }
@@ -77,16 +177,37 @@ fun AddPayedScreen(navController: NavController) {
     var todaySpent by remember { mutableStateOf(HomeDataCache.todaySpent) }
     var todayReceived by remember { mutableStateOf(HomeDataCache.todayReceived) }
     var dailyLimit by remember { mutableStateOf(HomeDataCache.dailyLimit) }
+    var weekSpent by remember { mutableStateOf(HomeDataCache.weekSpent) }
+    var weekLimit by remember { mutableStateOf(HomeDataCache.weekLimit) }
+    var monthSpent by remember { mutableStateOf(HomeDataCache.monthSpent) }
+    var monthLimit by remember { mutableStateOf(HomeDataCache.monthLimit) }
 
     suspend fun refreshOverview() {
         TransactionRepository.getTodaySpent().onSuccess { todaySpent = it; HomeDataCache.todaySpent = it }
         TransactionRepository.getTodayReceived().onSuccess { todayReceived = it; HomeDataCache.todayReceived = it }
-        DailyLimitRepository.getDailyLimit().onSuccess { dailyLimit = it; HomeDataCache.dailyLimit = it }
+        SpendingLimitRepository.getDailyLimit().onSuccess { dailyLimit = it; HomeDataCache.dailyLimit = it }
+        TransactionRepository.getWeekSpent().onSuccess { weekSpent = it; HomeDataCache.weekSpent = it }
+        TransactionRepository.getMonthSpent().onSuccess { monthSpent = it; HomeDataCache.monthSpent = it }
+        SpendingLimitRepository.getLimit(SpendingLimitRepository.PERIOD_WEEKLY).onSuccess { weekLimit = it; HomeDataCache.weekLimit = it }
+        SpendingLimitRepository.getLimit(SpendingLimitRepository.PERIOD_MONTHLY).onSuccess { monthLimit = it; HomeDataCache.monthLimit = it }
     }
 
-    LaunchedEffect(Unit) {
-        refreshOverview()
-        refreshCategories()
+    // Refresh on every RESUME (not just first composition) so edits made in Manage
+    // Categories / Settings / Transactions are reflected as soon as you come back here —
+    // popping back to this entry doesn't recompose it from scratch, so LaunchedEffect(Unit)
+    // alone would only ever fetch once.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                scope.launch {
+                    refreshOverview()
+                    refreshCategories()
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     val onSubmitTransaction: () -> Unit = {
@@ -170,7 +291,7 @@ fun AddPayedScreen(navController: NavController) {
                 .verticalScroll(rememberScrollState())
                 .imePadding()
         ) {
-            TopLogoBar(onSettingsClick = { navController.navigate(Routes.SETTINGS) })
+            AppHeader(onSettingsClick = { navController.navigate(Routes.SETTINGS) })
             Spacer(Modifier.height(16.dp))
 
             Row(
@@ -213,7 +334,11 @@ fun AddPayedScreen(navController: NavController) {
                 onFromWhoChange = { fromWho = it },
                 isSavingTransaction = isSavingTransaction,
                 transactionError = transactionError,
-                onSubmitTransaction = onSubmitTransaction
+                onSubmitTransaction = onSubmitTransaction,
+                isProcessingReceipt = isProcessingReceipt,
+                receiptError = receiptError,
+                receiptInfo = receiptInfo,
+                onScanReceiptClick = onScanReceiptClick
             )
 
             Spacer(Modifier.height(24.dp))
@@ -221,6 +346,10 @@ fun AddPayedScreen(navController: NavController) {
                 spent = todaySpent,
                 received = todayReceived,
                 limit = dailyLimit,
+                weekSpent = weekSpent,
+                weekLimit = weekLimit,
+                monthSpent = monthSpent,
+                monthLimit = monthLimit,
                 onClick = { navController.navigate(Routes.TRANSACTIONS) }
             )
         }
@@ -244,7 +373,11 @@ private fun TransactionForm(
     onFromWhoChange: (TextFieldValue) -> Unit,
     isSavingTransaction: Boolean,
     transactionError: String?,
-    onSubmitTransaction: () -> Unit
+    onSubmitTransaction: () -> Unit,
+    isProcessingReceipt: Boolean,
+    receiptError: String?,
+    receiptInfo: String?,
+    onScanReceiptClick: () -> Unit
 ) {
     val rotation by animateFloatAsState(
         targetValue = if (isReceivedMode) 180f else 0f,
@@ -275,7 +408,11 @@ private fun TransactionForm(
                 onAddCategoryClick = onAddCategoryClick,
                 isSavingTransaction = isSavingTransaction,
                 transactionError = transactionError,
-                onSubmitTransaction = onSubmitTransaction
+                onSubmitTransaction = onSubmitTransaction,
+                isProcessingReceipt = isProcessingReceipt,
+                receiptError = receiptError,
+                receiptInfo = receiptInfo,
+                onScanReceiptClick = onScanReceiptClick
             )
         } else {
             Box(modifier = Modifier.graphicsLayer { rotationY = 180f }) {
@@ -311,11 +448,41 @@ private fun PaidFormFields(
     onAddCategoryClick: () -> Unit,
     isSavingTransaction: Boolean,
     transactionError: String?,
-    onSubmitTransaction: () -> Unit
+    onSubmitTransaction: () -> Unit,
+    isProcessingReceipt: Boolean,
+    receiptError: String?,
+    receiptInfo: String?,
+    onScanReceiptClick: () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        LiraTextField(amount, onAmountChange, "Enter amount", keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+        LiraTextField(
+            value = amount,
+            onValueChange = onAmountChange,
+            placeholder = "Enter amount",
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            trailingIcon = {
+                if (isProcessingReceipt) {
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp), color = LiraTextSecondary, strokeWidth = 2.dp)
+                } else {
+                    IconButton(onClick = onScanReceiptClick) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_camera),
+                            contentDescription = "Scan Receipt",
+                            tint = LiraTextSecondary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+            }
         )
+        receiptError?.let {
+            Spacer(Modifier.height(6.dp))
+            Text(it, color = Color(0xFFE53935), fontSize = 13.sp)
+        }
+        receiptInfo?.let {
+            Spacer(Modifier.height(6.dp))
+            Text(it, color = Color(0xFF4CAF50), fontSize = 13.sp)
+        }
         Spacer(Modifier.height(20.dp))
 
         CategoryPickerSection(categories, selectedCategoryId, onCategorySelect, onAddCategoryClick)
@@ -469,6 +636,35 @@ private fun TimeDateSection() {
 }
 
 @Composable
+private fun ScanReceiptHintDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = LiraBackground,
+        shape = RoundedCornerShape(20.dp),
+        title = {
+            Text("Scan Receipt", color = LiraTextPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+        },
+        text = {
+            Text(
+                "Lay the receipt flat in good light and fit the whole thing in frame — the total and date need to be readable.",
+                color = LiraTextSecondary,
+                fontSize = 14.sp
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text("Open Camera", color = LiraTextPrimary, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", color = LiraTextSecondary)
+            }
+        }
+    )
+}
+
+@Composable
 private fun DescriptionSection(desc: TextFieldValue, onDescChange: (TextFieldValue) -> Unit) {
     Text("Description", color = LiraTextPrimary, fontWeight = FontWeight.Medium)
     Spacer(Modifier.height(12.dp))
@@ -530,90 +726,16 @@ private fun AddActionButton(
 }
 
 @Composable
-private fun AddCategoryDialog(
-    isSaving: Boolean,
-    errorMessage: String?,
-    onDismiss: () -> Unit,
-    onConfirm: (String) -> Unit
+private fun OverviewCard(
+    spent: Double,
+    received: Double,
+    limit: Double,
+    weekSpent: Double,
+    weekLimit: Double?,
+    monthSpent: Double,
+    monthLimit: Double?,
+    onClick: () -> Unit
 ) {
-    var name by remember { mutableStateOf(TextFieldValue("")) }
-
-    AlertDialog(
-        onDismissRequest = { if (!isSaving) onDismiss() },
-        containerColor = LiraBackground,
-        shape = RoundedCornerShape(20.dp),
-        title = {
-            Text("New Category", color = LiraTextPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-        },
-        text = {
-            Column {
-                LiraTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    placeholder = "Category name",
-                    modifier = Modifier.height(58.dp),
-                    fontSize = 18.sp
-                )
-                errorMessage?.let {
-                    Spacer(Modifier.height(8.dp))
-                    Text(it, color = Color(0xFFE53935), fontSize = 13.sp)
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { if (name.text.isNotBlank()) onConfirm(name.text.trim()) },
-                enabled = !isSaving && name.text.isNotBlank()
-            ) {
-                if (isSaving) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(16.dp),
-                        color = LiraTextPrimary,
-                        strokeWidth = 2.dp
-                    )
-                } else {
-                    Text("Add", color = LiraTextPrimary, fontWeight = FontWeight.Bold)
-                }
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !isSaving) {
-                Text("Cancel", color = LiraTextSecondary)
-            }
-        }
-    )
-}
-
-@Composable
-private fun TopLogoBar(onSettingsClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 0.dp, bottom = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // The Logo
-        Image(
-            painter = painterResource(id = R.drawable.lira_logo),
-            contentDescription = "Lira Logo",
-            modifier = Modifier.height(35.dp)
-        )
-
-        // The Settings Icon
-        Icon(
-            painter = painterResource(id = R.drawable.ic_settings),
-            contentDescription = "Settings",
-            tint = LiraTextPrimary,
-            modifier = Modifier
-                .size(24.dp)
-                .clickable { onSettingsClick() }
-        )
-    }
-}
-
-@Composable
-private fun OverviewCard(spent: Double, received: Double, limit: Double, onClick: () -> Unit) {
     val progress = if (limit > 0.0) (spent / limit).toFloat().coerceIn(0f, 1f) else 0f
 
     Column(modifier = Modifier.fillMaxWidth().clickable { onClick() }) {
@@ -630,6 +752,7 @@ private fun OverviewCard(spent: Double, received: Double, limit: Double, onClick
             border = BorderStroke(1.dp, LiraBorder),
             shape = RoundedCornerShape(16.dp)
         ) {
+            val symbol = CurrencyPreference.current.symbol
             Column(Modifier.padding(20.dp)) {
                 Text(
                     text = "Today's Spending",
@@ -638,7 +761,7 @@ private fun OverviewCard(spent: Double, received: Double, limit: Double, onClick
                 )
                 Spacer(Modifier.height(10.dp))
                 Text(
-                    text = String.format("€%.2f", spent),
+                    text = String.format("%s%.2f", symbol, spent),
                     color = LiraTextPrimary,
                     fontSize = 32.sp,
                     fontWeight = FontWeight.Bold
@@ -674,13 +797,40 @@ private fun OverviewCard(spent: Double, received: Double, limit: Double, onClick
                     )
                     Spacer(Modifier.weight(1f))
                     Text(
-                        text = String.format("+€%.2f", received),
+                        text = String.format("+%s%.2f", symbol, received),
                         color = Color(0xFF4CAF50),
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
+
+                Spacer(Modifier.height(16.dp))
+                HorizontalDivider(color = LiraBorder)
+                Spacer(Modifier.height(12.dp))
+
+                PeriodSummaryRow(label = "This Week", spent = weekSpent, limit = weekLimit)
+                Spacer(Modifier.height(10.dp))
+                PeriodSummaryRow(label = "This Month", spent = monthSpent, limit = monthLimit)
             }
+        }
+    }
+}
+
+@Composable
+private fun PeriodSummaryRow(label: String, spent: Double, limit: Double?) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, color = LiraTextPrimary.copy(alpha = 0.6f), fontSize = 13.sp)
+        Spacer(Modifier.weight(1f))
+        if (limit != null) {
+            val symbol = CurrencyPreference.current.symbol
+            Text(
+                text = String.format("%s%.2f / %s%.2f", symbol, spent, symbol, limit),
+                color = LiraTextPrimary,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+        } else {
+            Text("Not set", color = LiraTextSecondary, fontSize = 13.sp)
         }
     }
 }
