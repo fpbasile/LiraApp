@@ -28,9 +28,12 @@ import com.app.lira.R
 import com.app.lira.data.Currency
 import com.app.lira.data.CurrencyPreference
 import com.app.lira.data.remote.SupabaseClient
+import com.app.lira.data.model.Recurring
 import com.app.lira.data.repository.AccountRepository
 import com.app.lira.data.repository.AuthRepository
+import com.app.lira.data.repository.RecurringRepository
 import com.app.lira.data.repository.SpendingLimitRepository
+import com.app.lira.data.repository.TransactionRepository
 import com.app.lira.navigation.Routes
 import com.app.lira.ui.components.LiraTextField
 import com.app.lira.ui.theme.*
@@ -53,6 +56,11 @@ fun SettingsScreen(navController: NavController) {
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var isDeletingAccount by remember { mutableStateOf(false) }
     var deleteError by remember { mutableStateOf<String?>(null) }
+
+    var recurringEntries by remember { mutableStateOf<List<Recurring>>(emptyList()) }
+    LaunchedEffect(Unit) {
+        RecurringRepository.getRecurring().onSuccess { recurringEntries = it }
+    }
 
     if (showDeleteConfirm) {
         DeleteAccountDialog(
@@ -123,6 +131,7 @@ fun SettingsScreen(navController: NavController) {
             Spacer(Modifier.height(10.dp))
             NavigationRow(
                 label = "Recurring Payments",
+                subtitle = recurringSummary(recurringEntries),
                 onClick = { navController.navigate(Routes.RECURRING) }
             )
 
@@ -216,7 +225,7 @@ private fun SectionLabel(text: String) {
 }
 
 @Composable
-private fun NavigationRow(label: String, onClick: () -> Unit) {
+private fun NavigationRow(label: String, subtitle: String? = null, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -226,9 +235,27 @@ private fun NavigationRow(label: String, onClick: () -> Unit) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(label, color = LiraTextPrimary, fontWeight = FontWeight.Medium, fontSize = 15.sp)
+        Column {
+            Text(label, color = LiraTextPrimary, fontWeight = FontWeight.Medium, fontSize = 15.sp)
+            subtitle?.let {
+                Spacer(Modifier.height(3.dp))
+                Text(it, color = LiraTextSecondary, fontSize = 12.sp)
+            }
+        }
         Text("›", color = LiraTextSecondary, fontSize = 18.sp)
     }
+}
+
+/** Short "N payments · N income" (or empty-state) summary shown under the Recurring Payments row. */
+private fun recurringSummary(entries: List<Recurring>): String {
+    if (entries.isEmpty()) return "No recurring payments or income yet"
+    val payedCount = entries.count { it.type == TransactionRepository.TYPE_PAYED }
+    val receivedCount = entries.count { it.type == TransactionRepository.TYPE_RECEIVED }
+    val parts = buildList {
+        if (payedCount > 0) add("$payedCount payment${if (payedCount == 1) "" else "s"}")
+        if (receivedCount > 0) add("$receivedCount income${if (receivedCount == 1) "" else "s"}")
+    }
+    return parts.joinToString(" · ")
 }
 
 @Composable

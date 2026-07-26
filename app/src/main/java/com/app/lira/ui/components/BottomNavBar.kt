@@ -1,12 +1,14 @@
 package com.app.lira.ui.components
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -15,7 +17,9 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.app.lira.R
 import com.app.lira.navigation.Routes
 import com.app.lira.ui.theme.*
@@ -29,7 +33,6 @@ fun LiraBottomNavBar(
         color = LiraBackground,
         modifier = Modifier
             .fillMaxWidth()
-            .height(64.dp)
             .drawBehind {
                 drawLine(
                     color = Color.White.copy(alpha = 0.05f),
@@ -38,30 +41,30 @@ fun LiraBottomNavBar(
                     strokeWidth = 1.dp.toPx()
                 )
             }
+            // MainActivity uses enableEdgeToEdge(), so the app draws behind the system nav
+            // bar/gesture area. Material3's real NavigationBar pads for this internally; our
+            // custom Surface needs to do it explicitly or the system bar overlaps this content.
+            .navigationBarsPadding()
     ) {
         Row(
-            modifier = Modifier.fillMaxSize(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceAround
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(32.dp, Alignment.CenterHorizontally),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             LiraBottomNavItem(
                 iconRes = R.drawable.ic_home,
+                label = "Home",
                 isSelected = currentRoute == Routes.ADD_PAYED,
                 onClick = { onNavigate(Routes.ADD_PAYED) }
             )
 
-            // The middle icon (Calendar/Chart) - kept slightly larger but scaled down
-            LiraBottomNavItem(
-                iconRes = R.drawable.ic_chart,
-                isSelected = false,
-                onClick = { /* Navigate */ }
-            )
-
             LiraBottomNavItem(
                 iconRes = R.drawable.ic_calendar,
-                isSelected = false,
-                onClick = { /* Navigate */ },
-                isSpecial = true // We use a flag for that "big" center icon
+                label = "Calendar",
+                isSelected = currentRoute == Routes.CALENDAR,
+                onClick = { onNavigate(Routes.CALENDAR) }
             )
         }
     }
@@ -70,38 +73,40 @@ fun LiraBottomNavBar(
 @Composable
 private fun LiraBottomNavItem(
     iconRes: Int,
+    label: String,
     isSelected: Boolean,
-    onClick: () -> Unit,
-    isSpecial: Boolean = false
+    onClick: () -> Unit
 ) {
-    Box(
+    val backgroundColor by animateColorAsState(
+        targetValue = if (isSelected) LiraTextPrimary.copy(alpha = 0.12f) else Color.Transparent,
+        label = "nav_item_bg"
+    )
+    val contentColor = if (isSelected) LiraTextPrimary else LiraTextSecondary.copy(alpha = 0.6f)
+
+    Row(
         modifier = Modifier
-            .size(if (isSpecial) 48.dp else 40.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(backgroundColor)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null, // Removes the ripple for a cleaner look
                 onClick = onClick
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(
-                painter = painterResource(iconRes),
-                contentDescription = null,
-                tint = if (isSelected) LiraTextPrimary else LiraTextSecondary.copy(alpha = 0.5f),
-                modifier = Modifier.size(if (isSpecial) 28.dp else 24.dp) // Clean standard sizes
             )
-
-            // Small indicator dot for the active screen
-            if (isSelected) {
-                Spacer(Modifier.height(4.dp))
-                Box(
-                    modifier = Modifier
-                        .size(3.dp)
-                        .clip(CircleShape)
-                        .background(LiraTextPrimary)
-                )
-            }
-        }
+            .padding(horizontal = 18.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Icon(
+            painter = painterResource(iconRes),
+            contentDescription = label,
+            tint = contentColor,
+            modifier = Modifier.size(20.dp)
+        )
+        Text(
+            text = label,
+            color = contentColor,
+            fontSize = 13.sp,
+            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium
+        )
     }
 }

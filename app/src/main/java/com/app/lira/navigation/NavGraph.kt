@@ -28,11 +28,13 @@ import com.app.lira.R
 import com.app.lira.data.HomeDataCache
 import com.app.lira.data.remote.SupabaseClient
 import com.app.lira.data.repository.CategoryRepository
+import com.app.lira.data.repository.RecurringRepository
 import com.app.lira.data.repository.SpendingLimitRepository
 import com.app.lira.data.repository.TransactionRepository
 import com.app.lira.data.repository.toUiCategories
 import com.app.lira.ui.screens.LoginScreen
 import com.app.lira.ui.screens.AddPayedScreen
+import com.app.lira.ui.screens.CalendarScreen
 import com.app.lira.ui.screens.ManageCategoriesScreen
 import com.app.lira.ui.screens.RecurringScreen
 import com.app.lira.ui.screens.SettingsScreen
@@ -50,6 +52,7 @@ object Routes {
     const val SETTINGS = "settings"
     const val MANAGE_CATEGORIES = "manage_categories"
     const val RECURRING = "recurring"
+    const val CALENDAR = "calendar"
 }
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -65,6 +68,10 @@ fun NavGraph(navController: NavHostController) {
         SupabaseClient.client.auth.awaitInitialization()
         val session = SupabaseClient.client.auth.currentSessionOrNull()
         if (session != null) {
+            // Post any recurring payments/income that came due while the app was closed, before
+            // prefetching totals below, so they're reflected in today/week/month sums right away.
+            RecurringRepository.postDueOccurrences()
+
             // Prefetch the home screen's data in parallel while the splash is still up,
             // so AddPayedScreen's first frame already has real data instead of showing
             // empty/zero state for a moment while its own fetch is in flight.
@@ -93,6 +100,7 @@ fun NavGraph(navController: NavHostController) {
             composable(Routes.SETTINGS) { SettingsScreen(navController) }
             composable(Routes.MANAGE_CATEGORIES) { ManageCategoriesScreen(navController) }
             composable(Routes.RECURRING) { RecurringScreen(navController) }
+            composable(Routes.CALENDAR) { CalendarScreen(navController) }
         }
     }
 }

@@ -2,6 +2,7 @@ package com.app.lira.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -24,9 +25,14 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.app.lira.R
 import com.app.lira.data.CurrencyPreference
+import com.app.lira.data.HomeDataCache
 import com.app.lira.data.model.Recurring
 import com.app.lira.data.repository.RecurringRepository
+import com.app.lira.data.repository.TransactionRepository
+import com.app.lira.ui.components.CategoryChip
 import com.app.lira.ui.components.ConfirmationDialog
+import com.app.lira.ui.components.ExpenseColor
+import com.app.lira.ui.components.IncomeColor
 import com.app.lira.ui.components.LiraTextField
 import com.app.lira.ui.theme.*
 import kotlinx.coroutines.launch
@@ -46,6 +52,7 @@ fun RecurringScreen(navController: NavController) {
     var loadError by remember { mutableStateOf<String?>(null) }
 
     var showAddDialog by remember { mutableStateOf(false) }
+    var editingEntry by remember { mutableStateOf<Recurring?>(null) }
     var isSavingAdd by remember { mutableStateOf(false) }
     var addError by remember { mutableStateOf<String?>(null) }
 
@@ -65,22 +72,29 @@ fun RecurringScreen(navController: NavController) {
         isLoading = false
     }
 
-    if (showAddDialog) {
+    if (showAddDialog || editingEntry != null) {
+        val editTarget = editingEntry
         AddRecurringDialog(
+            existing = editTarget,
             isSaving = isSavingAdd,
             errorMessage = addError,
-            onDismiss = { showAddDialog = false; addError = null },
-            onConfirm = { name, amount, interval, startDate, occurrences ->
+            onDismiss = { showAddDialog = false; editingEntry = null; addError = null },
+            onConfirm = { name, amount, interval, startDate, occurrences, type, categoryId ->
                 scope.launch {
                     isSavingAdd = true
                     addError = null
-                    val result = RecurringRepository.addRecurring(name, amount, startDate, interval, occurrences)
+                    val result = if (editTarget != null) {
+                        RecurringRepository.updateRecurring(editTarget, name, amount, startDate, interval, occurrences, type, categoryId)
+                    } else {
+                        RecurringRepository.addRecurring(name, amount, startDate, interval, occurrences, type, categoryId).map { }
+                    }
                     isSavingAdd = false
                     result.onSuccess {
                         showAddDialog = false
+                        editingEntry = null
                         refresh()
                     }.onFailure { e ->
-                        addError = e.message ?: "Couldn't add recurring payment"
+                        addError = e.message ?: "Couldn't save recurring payment"
                     }
                 }
             }
@@ -176,7 +190,11 @@ fun RecurringScreen(navController: NavController) {
                 }
                 else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     items(entries, key = { it.id ?: it.hashCode() }) { entry ->
-                        RecurringRow(entry, onDelete = { entryToDelete = entry })
+                        RecurringRow(
+                            entry,
+                            onClick = { editingEntry = entry },
+                            onDelete = { entryToDelete = entry }
+                        )
                     }
                     item { Spacer(Modifier.height(16.dp)) }
                 }
@@ -186,21 +204,29 @@ fun RecurringScreen(navController: NavController) {
 }
 
 @Composable
-private fun RecurringRow(entry: Recurring, onDelete: () -> Unit) {
-    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+private fun RecurringRow(entry: Recurring, onClick: () -> Unit, onDelete: () -> Unit) {
+    val isReceived = entry.type == TransactionRepository.TYPE_RECEIVED
+    val accentColor = if (isReceived) IncomeColor else ExpenseColor
+    val categoryName = entry.category_id?.let { id -> HomeDataCache.categories.firstOrNull { it.id == id }?.name }
+
+    Row(
+        modifier = Modifier.fillMaxWidth().clickable { onClick() },
+        verticalAlignment = Alignment.CenterVertically
+    ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(entry.name, color = LiraTextPrimary, fontWeight = FontWeight.Medium, fontSize = 15.sp)
             Spacer(Modifier.height(2.dp))
-            Text(
-                text = "${entry.interval.replaceFirstChar { it.uppercase() }} · starts ${formatDate(entry.start_date)}",
-                color = LiraTextSecondary,
-                fontSize = 13.sp
-            )
+            val detail = buildString {
+                append(entry.interval.replaceFirstChar { it.uppercase() })
+                append(" · starts ${formatDate(entry.start_date)}")
+                categoryName?.let { append(" · $it") }
+            }
+            Text(detail, color = LiraTextSecondary, fontSize = 13.sp)
         }
 
         Text(
-            text = String.format("%s%.2f", CurrencyPreference.current.symbol, entry.amount),
-            color = LiraTextPrimary,
+            text = String.format(if (isReceived) "+%s%.2f" else "-%s%.2f", CurrencyPreference.current.symbol, entry.amount),
+            color = accentColor,
             fontWeight = FontWeight.SemiBold,
             fontSize = 15.sp
         )
@@ -226,17 +252,30 @@ private fun formatDate(isoDate: String): String = try {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AddRecurringDialog(
+    existing: Recurring? = null,
     isSaving: Boolean,
     errorMessage: String?,
     onDismiss: () -> Unit,
-    onConfirm: (name: String, amount: Double, interval: String, startDate: String, occurrences: Int?) -> Unit
+    onConfirm: (name: String, amount: Double, interval: String, startDate: String, occurrences: Int?, type: String, categoryId: Int?) -> Unit
 ) {
-    var name by remember { mutableStateOf(TextFieldValue("")) }
-    var amount by remember { mutableStateOf(TextFieldValue("")) }
-    var interval by remember { mutableStateOf(RecurringRepository.INTERVALS[2]) } // monthly by default
-    var occurrences by remember { mutableStateOf(TextFieldValue("")) }
-    var startDateMillis by remember { mutableStateOf(System.currentTimeMillis()) }
+    var name by remember { mutableStateOf(TextFieldValue(existing?.name ?: "")) }
+    var amount by remember { mutableStateOf(TextFieldValue(existing?.amount?.let { String.format("%.2f", it) } ?: "")) }
+    var type by remember { mutableStateOf(existing?.type ?: TransactionRepository.TYPE_PAYED) }
+    var interval by remember { mutableStateOf(existing?.interval ?: RecurringRepository.INTERVALS[2]) } // monthly by default
+    var occurrences by remember { mutableStateOf(TextFieldValue(existing?.occurrences?.toString() ?: "")) }
+    var startDateMillis by remember {
+        mutableStateOf(
+            existing?.start_date?.let { iso ->
+                try {
+                    LocalDate.parse(iso).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+                } catch (e: Exception) {
+                    System.currentTimeMillis()
+                }
+            } ?: System.currentTimeMillis()
+        )
+    }
     var showDatePicker by remember { mutableStateOf(false) }
+    var selectedCategoryId by remember { mutableStateOf(existing?.category_id) }
     var fieldError by remember { mutableStateOf<String?>(null) }
 
     val startDateText = remember(startDateMillis) {
@@ -272,14 +311,34 @@ private fun AddRecurringDialog(
         containerColor = LiraBackground,
         shape = RoundedCornerShape(20.dp),
         title = {
-            Text("New Recurring Payment", color = LiraTextPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            Text(
+                if (existing != null) "Edit Recurring Payment" else "New Recurring Payment",
+                color = LiraTextPrimary,
+                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp
+            )
         },
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    IntervalChip(
+                        label = "Payment",
+                        isSelected = type == TransactionRepository.TYPE_PAYED,
+                        onClick = { type = TransactionRepository.TYPE_PAYED }
+                    )
+                    IntervalChip(
+                        label = "Income",
+                        isSelected = type == TransactionRepository.TYPE_RECEIVED,
+                        onClick = { type = TransactionRepository.TYPE_RECEIVED; selectedCategoryId = null }
+                    )
+                }
+
+                Spacer(Modifier.height(16.dp))
+
                 LiraTextField(
                     value = name,
                     onValueChange = { name = it; fieldError = null },
-                    placeholder = "Name (e.g. Rent)"
+                    placeholder = if (type == TransactionRepository.TYPE_RECEIVED) "Name (e.g. Paycheck)" else "Name (e.g. Rent)"
                 )
 
                 Spacer(Modifier.height(12.dp))
@@ -290,6 +349,27 @@ private fun AddRecurringDialog(
                     placeholder = "Amount in ${CurrencyPreference.current.symbol}",
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
+
+                if (type == TransactionRepository.TYPE_PAYED && HomeDataCache.categories.isNotEmpty()) {
+                    Spacer(Modifier.height(16.dp))
+                    Text("Category (optional)", color = LiraTextPrimary, fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                    Spacer(Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        HomeDataCache.categories.forEach { category ->
+                            CategoryChip(
+                                category = category,
+                                isSelected = category.id == selectedCategoryId,
+                                onClick = {
+                                    selectedCategoryId = if (selectedCategoryId == category.id) null else category.id
+                                },
+                                modifier = Modifier.width(110.dp)
+                            )
+                        }
+                    }
+                }
 
                 Spacer(Modifier.height(16.dp))
                 Text("Interval", color = LiraTextPrimary, fontWeight = FontWeight.Medium, fontSize = 14.sp)
@@ -345,7 +425,7 @@ private fun AddRecurringDialog(
                         occurrences.text.isNotBlank() && parsedOccurrences == null -> fieldError = "Occurrences must be a number"
                         else -> {
                             val isoDate = Instant.ofEpochMilli(startDateMillis).atZone(ZoneOffset.UTC).toLocalDate().toString()
-                            onConfirm(name.text.trim(), parsedAmount, interval, isoDate, parsedOccurrences)
+                            onConfirm(name.text.trim(), parsedAmount, interval, isoDate, parsedOccurrences, type, selectedCategoryId)
                         }
                     }
                 },
@@ -354,7 +434,7 @@ private fun AddRecurringDialog(
                 if (isSaving) {
                     CircularProgressIndicator(modifier = Modifier.size(16.dp), color = LiraTextPrimary, strokeWidth = 2.dp)
                 } else {
-                    Text("Add", color = LiraTextPrimary, fontWeight = FontWeight.Bold)
+                    Text(if (existing != null) "Save" else "Add", color = LiraTextPrimary, fontWeight = FontWeight.Bold)
                 }
             }
         },

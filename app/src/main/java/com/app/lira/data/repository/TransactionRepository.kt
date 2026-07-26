@@ -14,8 +14,11 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.time.DayOfWeek
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.OffsetDateTime
+import java.time.YearMonth
 import java.time.ZoneId
+import java.time.format.DateTimeParseException
 import java.time.temporal.TemporalAdjusters
 
 @Serializable
@@ -26,11 +29,17 @@ private data class NewTransaction(
     val type: String,
     val source: String? = null,
     val description: String? = null,
-    val date: String
+    val date: String,
+    @SerialName("recurring_id") val recurringId: Int? = null
 )
 
 @Serializable
 private data class TransactionAmountRow(val amount: Double)
+
+@Serializable
+private data class AmountTypeDateRow(val amount: Double, val type: String, val date: String)
+
+data class MonthlyTotal(val yearMonth: YearMonth, val spent: Double, val received: Double)
 
 @Serializable
 data class TransactionCategoryRef(val name: String)
@@ -43,7 +52,8 @@ data class TransactionDetail(
     val source: String? = null,
     val description: String? = null,
     val date: String,
-    val category: TransactionCategoryRef? = null
+    val category: TransactionCategoryRef? = null,
+    val recurring_id: Int? = null
 )
 
 object TransactionRepository {
@@ -60,6 +70,30 @@ object TransactionRepository {
         categoryId: Int? = null,
         source: String? = null,
         description: String? = null
+    ): Result<Unit> = insert(amount, type, categoryId, source, description, OffsetDateTime.now().toString(), recurringId = null)
+
+    /** Same as [addTransaction] but backdated to [date] and linked to [recurringId] (used to auto-post due recurring entries). */
+    suspend fun addTransactionOnDate(
+        amount: Double,
+        type: String,
+        date: LocalDate,
+        categoryId: Int? = null,
+        source: String? = null,
+        description: String? = null,
+        recurringId: Int? = null
+    ): Result<Unit> {
+        val zone = ZoneId.systemDefault()
+        return insert(amount, type, categoryId, source, description, date.atStartOfDay(zone).toOffsetDateTime().toString(), recurringId)
+    }
+
+    private suspend fun insert(
+        amount: Double,
+        type: String,
+        categoryId: Int?,
+        source: String?,
+        description: String?,
+        dateIso: String,
+        recurringId: Int?
     ): Result<Unit> = withContext(Dispatchers.IO) {
         val userId = client.auth.currentUserOrNull()?.id
             ?: return@withContext Result.failure(Exception("You're not signed in."))
@@ -73,9 +107,41 @@ object TransactionRepository {
                     type = type,
                     source = source?.takeIf { it.isNotBlank() },
                     description = description?.takeIf { it.isNotBlank() },
-                    date = OffsetDateTime.now().toString()
+                    date = dateIso,
+                    recurringId = recurringId
                 )
             )
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(Exception(friendlyDbError(e)))
+        }
+    }
+
+    suspend fun updateTransaction(
+        id: Int,
+        amount: Double,
+        categoryId: Int?,
+        source: String?,
+        description: String?
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        return@withContext try {
+            client.postgrest["transactions"].update({
+                set("amount", amount)
+                set("category_id", categoryId)
+                set("source", source?.takeIf { it.isNotBlank() })
+                set("description", description?.takeIf { it.isNotBlank() })
+            }) {
+                filter { eq("id", id) }
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(Exception(friendlyDbError(e)))
+        }
+    }
+
+    suspend fun deleteTransaction(id: Int): Result<Unit> = withContext(Dispatchers.IO) {
+        return@withContext try {
+            client.postgrest["transactions"].delete { filter { eq("id", id) } }
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(Exception(friendlyDbError(e)))
@@ -90,7 +156,7 @@ object TransactionRepository {
         return@withContext try {
             val (startOfDay, endOfDay) = todayRange()
             val rows = client.postgrest["transactions"]
-                .select(Columns.raw("id, amount, type, source, description, date, category(name)")) {
+                .select(Columns.raw("id, amount, type, source, description, date, recurring_id, category(name)")) {
                     filter {
                         eq("user_id", userId)
                         gte("date", startOfDay)
@@ -103,6 +169,99 @@ object TransactionRepository {
             Result.success(rows)
         } catch (e: Exception) {
             Result.failure(Exception(friendlyDbError(e)))
+        }
+    }
+
+    /** All transactions for the current user, newest first, with category names embedded (bounded to [limit] rows). */
+    suspend fun getAllTransactions(limit: Long = 500): Result<List<TransactionDetail>> = withContext(Dispatchers.IO) {
+        val userId = client.auth.currentUserOrNull()?.id
+            ?: return@withContext Result.failure(Exception("You're not signed in."))
+
+        return@withContext try {
+            val rows = client.postgrest["transactions"]
+                .select(Columns.raw("id, amount, type, source, description, date, recurring_id, category(name)")) {
+                    filter { eq("user_id", userId) }
+                    order("date", Order.DESCENDING)
+                    limit(limit)
+                }
+                .decodeList<TransactionDetail>()
+
+            Result.success(rows)
+        } catch (e: Exception) {
+            Result.failure(Exception(friendlyDbError(e)))
+        }
+    }
+
+    /** All transactions in [yearMonth] for the current user, newest first, with category names embedded. */
+    suspend fun getTransactionsForMonth(yearMonth: YearMonth): Result<List<TransactionDetail>> = withContext(Dispatchers.IO) {
+        val userId = client.auth.currentUserOrNull()?.id
+            ?: return@withContext Result.failure(Exception("You're not signed in."))
+
+        return@withContext try {
+            val zone = ZoneId.systemDefault()
+            val (start, end) = dateRange(zone, yearMonth.atDay(1), yearMonth.plusMonths(1).atDay(1))
+            val rows = client.postgrest["transactions"]
+                .select(Columns.raw("id, amount, type, source, description, date, recurring_id, category(name)")) {
+                    filter {
+                        eq("user_id", userId)
+                        gte("date", start)
+                        lt("date", end)
+                    }
+                    order("date", Order.DESCENDING)
+                }
+                .decodeList<TransactionDetail>()
+
+            Result.success(rows)
+        } catch (e: Exception) {
+            Result.failure(Exception(friendlyDbError(e)))
+        }
+    }
+
+    /**
+     * Spent/received totals per month for the last [monthsBack] months (oldest first, including
+     * the current month), fetched as a single ranged query and aggregated client-side.
+     */
+    suspend fun getMonthlyTotals(monthsBack: Int): Result<List<MonthlyTotal>> = withContext(Dispatchers.IO) {
+        val userId = client.auth.currentUserOrNull()?.id
+            ?: return@withContext Result.failure(Exception("You're not signed in."))
+
+        return@withContext try {
+            val zone = ZoneId.systemDefault()
+            val endMonth = YearMonth.now(zone)
+            val startMonth = endMonth.minusMonths((monthsBack - 1).toLong())
+            val (start, end) = dateRange(zone, startMonth.atDay(1), endMonth.plusMonths(1).atDay(1))
+
+            val rows = client.postgrest["transactions"].select(Columns.list("amount", "type", "date")) {
+                filter {
+                    eq("user_id", userId)
+                    gte("date", start)
+                    lt("date", end)
+                }
+            }.decodeList<AmountTypeDateRow>()
+
+            val byMonth = rows.groupBy { parseYearMonth(it.date) }
+            val totals = (0 until monthsBack).map { offset ->
+                val month = startMonth.plusMonths(offset.toLong())
+                val monthRows = byMonth[month].orEmpty()
+                MonthlyTotal(
+                    yearMonth = month,
+                    spent = monthRows.filter { it.type == TYPE_PAYED }.sumOf { it.amount },
+                    received = monthRows.filter { it.type == TYPE_RECEIVED }.sumOf { it.amount }
+                )
+            }
+            Result.success(totals)
+        } catch (e: Exception) {
+            Result.failure(Exception(friendlyDbError(e)))
+        }
+    }
+
+    private fun parseYearMonth(isoDate: String): YearMonth? = try {
+        YearMonth.from(OffsetDateTime.parse(isoDate))
+    } catch (e: DateTimeParseException) {
+        try {
+            YearMonth.from(LocalDateTime.parse(isoDate))
+        } catch (e2: DateTimeParseException) {
+            null
         }
     }
 
