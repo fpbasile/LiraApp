@@ -23,8 +23,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
 import com.app.lira.R
 import com.app.lira.data.HomeDataCache
 import com.app.lira.data.remote.SupabaseClient
@@ -36,7 +38,10 @@ import com.app.lira.data.repository.toUiCategories
 import com.app.lira.ui.screens.LoginScreen
 import com.app.lira.ui.screens.AddPayedScreen
 import com.app.lira.ui.screens.CalendarScreen
+import com.app.lira.ui.screens.CurrencyConverterScreen
 import com.app.lira.ui.screens.ManageCategoriesScreen
+import com.app.lira.ui.screens.TravellingScreen
+import com.app.lira.ui.screens.TripDetailScreen
 import com.app.lira.ui.screens.RecurringScreen
 import com.app.lira.ui.screens.SettingsScreen
 import com.app.lira.ui.screens.TransactionsScreen
@@ -55,6 +60,10 @@ object Routes {
     const val MANAGE_CATEGORIES = "manage_categories"
     const val RECURRING = "recurring"
     const val CALENDAR = "calendar"
+    const val CURRENCY_CONVERTER = "currency_converter"
+    const val TRAVELLING = "travelling"
+    const val TRIP_DETAIL = "trip_detail/{tripId}"
+    fun tripDetail(tripId: Int) = "trip_detail/$tripId"
 }
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -107,6 +116,15 @@ fun NavGraph(navController: NavHostController) {
             composable(Routes.MANAGE_CATEGORIES) { ManageCategoriesScreen(navController) }
             composable(Routes.RECURRING) { RecurringScreen(navController) }
             composable(Routes.CALENDAR) { CalendarScreen(navController) }
+            composable(Routes.CURRENCY_CONVERTER) { CurrencyConverterScreen(navController) }
+            composable(Routes.TRAVELLING) { TravellingScreen(navController) }
+            composable(
+                Routes.TRIP_DETAIL,
+                arguments = listOf(navArgument("tripId") { type = NavType.IntType })
+            ) { backStackEntry ->
+                val tripId = backStackEntry.arguments?.getInt("tripId") ?: return@composable
+                TripDetailScreen(navController, tripId)
+            }
         }
     }
 }

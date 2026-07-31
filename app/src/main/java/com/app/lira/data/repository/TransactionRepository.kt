@@ -31,7 +31,9 @@ private data class NewTransaction(
     val source: String? = null,
     val description: String? = null,
     val date: String,
-    @SerialName("recurring_id") val recurringId: Int? = null
+    @SerialName("recurring_id") val recurringId: Int? = null,
+    @SerialName("trip_id") val tripId: Int? = null,
+    val currency: String? = null
 )
 
 @Serializable
@@ -54,7 +56,9 @@ data class TransactionDetail(
     val description: String? = null,
     val date: String,
     val category: TransactionCategoryRef? = null,
-    val recurring_id: Int? = null
+    val recurring_id: Int? = null,
+    val trip_id: Int? = null,
+    val currency: String? = null
 )
 
 object TransactionRepository {
@@ -70,8 +74,11 @@ object TransactionRepository {
         type: String,
         categoryId: Int? = null,
         source: String? = null,
-        description: String? = null
-    ): Result<Unit> = insert(amount, type, categoryId, source, description, OffsetDateTime.now().toString(), recurringId = null)
+        description: String? = null,
+        date: OffsetDateTime = OffsetDateTime.now(),
+        tripId: Int? = null,
+        currency: String? = null
+    ): Result<Unit> = insert(amount, type, categoryId, source, description, date.toString(), recurringId = null, tripId = tripId, currency = currency)
 
     /** Same as [addTransaction] but backdated to [date] and linked to [recurringId] (used to auto-post due recurring entries). */
     suspend fun addTransactionOnDate(
@@ -84,7 +91,7 @@ object TransactionRepository {
         recurringId: Int? = null
     ): Result<Unit> {
         val zone = ZoneId.systemDefault()
-        return insert(amount, type, categoryId, source, description, date.atStartOfDay(zone).toOffsetDateTime().toString(), recurringId)
+        return insert(amount, type, categoryId, source, description, date.atStartOfDay(zone).toOffsetDateTime().toString(), recurringId, tripId = null, currency = null)
     }
 
     private suspend fun insert(
@@ -94,7 +101,9 @@ object TransactionRepository {
         source: String?,
         description: String?,
         dateIso: String,
-        recurringId: Int?
+        recurringId: Int?,
+        tripId: Int?,
+        currency: String?
     ): Result<Unit> = withContext(Dispatchers.IO) {
         val userId = client.auth.currentUserOrNull()?.id
             ?: return@withContext Result.failure(Exception("You're not signed in."))
@@ -109,7 +118,9 @@ object TransactionRepository {
                     source = source?.takeIf { it.isNotBlank() },
                     description = description?.takeIf { it.isNotBlank() },
                     date = dateIso,
-                    recurringId = recurringId
+                    recurringId = recurringId,
+                    tripId = tripId,
+                    currency = currency
                 )
             )
             WidgetRefresher.refresh()
@@ -160,7 +171,7 @@ object TransactionRepository {
         return@withContext try {
             val (startOfDay, endOfDay) = todayRange()
             val rows = client.postgrest["transactions"]
-                .select(Columns.raw("id, amount, type, source, description, date, recurring_id, category(name)")) {
+                .select(Columns.raw("id, amount, type, source, description, date, recurring_id, trip_id, currency, category(name)")) {
                     filter {
                         eq("user_id", userId)
                         gte("date", startOfDay)
@@ -183,7 +194,7 @@ object TransactionRepository {
 
         return@withContext try {
             val rows = client.postgrest["transactions"]
-                .select(Columns.raw("id, amount, type, source, description, date, recurring_id, category(name)")) {
+                .select(Columns.raw("id, amount, type, source, description, date, recurring_id, trip_id, currency, category(name)")) {
                     filter { eq("user_id", userId) }
                     order("date", Order.DESCENDING)
                     limit(limit)
@@ -205,7 +216,7 @@ object TransactionRepository {
             val zone = ZoneId.systemDefault()
             val (start, end) = dateRange(zone, yearMonth.atDay(1), yearMonth.plusMonths(1).atDay(1))
             val rows = client.postgrest["transactions"]
-                .select(Columns.raw("id, amount, type, source, description, date, recurring_id, category(name)")) {
+                .select(Columns.raw("id, amount, type, source, description, date, recurring_id, trip_id, currency, category(name)")) {
                     filter {
                         eq("user_id", userId)
                         gte("date", start)

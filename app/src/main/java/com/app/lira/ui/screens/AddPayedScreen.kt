@@ -55,8 +55,12 @@ import com.app.lira.widget.WidgetActions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -185,6 +189,9 @@ fun AddPayedScreen(navController: NavController) {
     var isSavingTransaction by remember { mutableStateOf(false) }
     var transactionError by remember { mutableStateOf<String?>(null) }
 
+    var selectedDate by remember { mutableStateOf(LocalDate.now()) }
+    var selectedTime by remember { mutableStateOf(LocalTime.now()) }
+
     var todaySpent by remember { mutableStateOf(HomeDataCache.todaySpent) }
     var todayReceived by remember { mutableStateOf(HomeDataCache.todayReceived) }
     var dailyLimit by remember { mutableStateOf(HomeDataCache.dailyLimit) }
@@ -236,7 +243,8 @@ fun AddPayedScreen(navController: NavController) {
                     type = if (isReceivedMode) TransactionRepository.TYPE_RECEIVED else TransactionRepository.TYPE_PAYED,
                     categoryId = selectedCategoryId,
                     source = if (isReceivedMode) fromWho.text else null,
-                    description = description.text
+                    description = description.text,
+                    date = LocalDateTime.of(selectedDate, selectedTime).atZone(ZoneId.systemDefault()).toOffsetDateTime()
                 )
                 isSavingTransaction = false
                 result.onSuccess {
@@ -244,6 +252,8 @@ fun AddPayedScreen(navController: NavController) {
                     description = TextFieldValue("")
                     fromWho = TextFieldValue("")
                     selectedCategoryId = null
+                    selectedDate = LocalDate.now()
+                    selectedTime = LocalTime.now()
                     refreshOverview()
                 }.onFailure { e ->
                     transactionError = e.message ?: "Couldn't save"
@@ -343,6 +353,10 @@ fun AddPayedScreen(navController: NavController) {
                 onAddCategoryClick = { showAddCategoryDialog = true },
                 fromWho = fromWho,
                 onFromWhoChange = { fromWho = it },
+                selectedDate = selectedDate,
+                onDateChange = { selectedDate = it },
+                selectedTime = selectedTime,
+                onTimeChange = { selectedTime = it },
                 isSavingTransaction = isSavingTransaction,
                 transactionError = transactionError,
                 onSubmitTransaction = onSubmitTransaction,
@@ -370,7 +384,7 @@ fun AddPayedScreen(navController: NavController) {
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun TransactionForm(
+internal fun TransactionForm(
     isReceivedMode: Boolean,
     amount: TextFieldValue,
     onAmountChange: (TextFieldValue) -> Unit,
@@ -382,13 +396,20 @@ private fun TransactionForm(
     onAddCategoryClick: () -> Unit,
     fromWho: TextFieldValue,
     onFromWhoChange: (TextFieldValue) -> Unit,
+    selectedDate: LocalDate,
+    onDateChange: (LocalDate) -> Unit,
+    selectedTime: LocalTime,
+    onTimeChange: (LocalTime) -> Unit,
     isSavingTransaction: Boolean,
     transactionError: String?,
     onSubmitTransaction: () -> Unit,
     isProcessingReceipt: Boolean,
     receiptError: String?,
     receiptInfo: String?,
-    onScanReceiptClick: () -> Unit
+    onScanReceiptClick: () -> Unit,
+    tripCurrencies: List<String> = emptyList(),
+    selectedCurrency: String? = null,
+    onCurrencyChange: (String) -> Unit = {}
 ) {
     val rotation by animateFloatAsState(
         targetValue = if (isReceivedMode) 180f else 0f,
@@ -417,13 +438,20 @@ private fun TransactionForm(
                 selectedCategoryId = selectedCategoryId,
                 onCategorySelect = onCategorySelect,
                 onAddCategoryClick = onAddCategoryClick,
+                selectedDate = selectedDate,
+                onDateChange = onDateChange,
+                selectedTime = selectedTime,
+                onTimeChange = onTimeChange,
                 isSavingTransaction = isSavingTransaction,
                 transactionError = transactionError,
                 onSubmitTransaction = onSubmitTransaction,
                 isProcessingReceipt = isProcessingReceipt,
                 receiptError = receiptError,
                 receiptInfo = receiptInfo,
-                onScanReceiptClick = onScanReceiptClick
+                onScanReceiptClick = onScanReceiptClick,
+                tripCurrencies = tripCurrencies,
+                selectedCurrency = selectedCurrency,
+                onCurrencyChange = onCurrencyChange
             )
         } else {
             Box(modifier = Modifier.graphicsLayer { rotationY = 180f }) {
@@ -438,9 +466,16 @@ private fun TransactionForm(
                     onFromWhoChange = onFromWhoChange,
                     desc = desc,
                     onDescChange = onDescChange,
+                    selectedDate = selectedDate,
+                    onDateChange = onDateChange,
+                    selectedTime = selectedTime,
+                    onTimeChange = onTimeChange,
                     isSavingTransaction = isSavingTransaction,
                     transactionError = transactionError,
-                    onSubmitTransaction = onSubmitTransaction
+                    onSubmitTransaction = onSubmitTransaction,
+                    tripCurrencies = tripCurrencies,
+                    selectedCurrency = selectedCurrency,
+                    onCurrencyChange = onCurrencyChange
                 )
             }
         }
@@ -457,13 +492,20 @@ private fun PaidFormFields(
     selectedCategoryId: Int?,
     onCategorySelect: (Int) -> Unit,
     onAddCategoryClick: () -> Unit,
+    selectedDate: LocalDate,
+    onDateChange: (LocalDate) -> Unit,
+    selectedTime: LocalTime,
+    onTimeChange: (LocalTime) -> Unit,
     isSavingTransaction: Boolean,
     transactionError: String?,
     onSubmitTransaction: () -> Unit,
     isProcessingReceipt: Boolean,
     receiptError: String?,
     receiptInfo: String?,
-    onScanReceiptClick: () -> Unit
+    onScanReceiptClick: () -> Unit,
+    tripCurrencies: List<String> = emptyList(),
+    selectedCurrency: String? = null,
+    onCurrencyChange: (String) -> Unit = {}
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         LiraTextField(
@@ -494,12 +536,18 @@ private fun PaidFormFields(
             Spacer(Modifier.height(6.dp))
             Text(it, color = Color(0xFF4CAF50), fontSize = 13.sp)
         }
+
+        if (tripCurrencies.isNotEmpty()) {
+            Spacer(Modifier.height(16.dp))
+            CurrencyChipRow(tripCurrencies, selectedCurrency, onCurrencyChange)
+        }
+
         Spacer(Modifier.height(20.dp))
 
         CategoryPickerSection(categories, selectedCategoryId, onCategorySelect, onAddCategoryClick)
 
         Spacer(Modifier.height(20.dp))
-        TimeDateSection()
+        TimeDateSection(selectedDate, onDateChange, selectedTime, onTimeChange)
         Spacer(Modifier.height(20.dp))
         DescriptionSection(desc, onDescChange)
         Spacer(Modifier.height(24.dp))
@@ -520,13 +568,26 @@ private fun ReceivedFormFields(
     onFromWhoChange: (TextFieldValue) -> Unit,
     desc: TextFieldValue,
     onDescChange: (TextFieldValue) -> Unit,
+    selectedDate: LocalDate,
+    onDateChange: (LocalDate) -> Unit,
+    selectedTime: LocalTime,
+    onTimeChange: (LocalTime) -> Unit,
     isSavingTransaction: Boolean,
     transactionError: String?,
-    onSubmitTransaction: () -> Unit
+    onSubmitTransaction: () -> Unit,
+    tripCurrencies: List<String> = emptyList(),
+    selectedCurrency: String? = null,
+    onCurrencyChange: (String) -> Unit = {}
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         LiraTextField(amount, onAmountChange, "Enter amount", keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
         )
+
+        if (tripCurrencies.isNotEmpty()) {
+            Spacer(Modifier.height(16.dp))
+            CurrencyChipRow(tripCurrencies, selectedCurrency, onCurrencyChange)
+        }
+
         Spacer(Modifier.height(20.dp))
 
         CategoryPickerSection(categories, selectedCategoryId, onCategorySelect, onAddCategoryClick, isOptional = true)
@@ -537,7 +598,7 @@ private fun ReceivedFormFields(
         LiraTextField(fromWho, onFromWhoChange, "Who sent it?", keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text))
 
         Spacer(Modifier.height(20.dp))
-        TimeDateSection()
+        TimeDateSection(selectedDate, onDateChange, selectedTime, onTimeChange)
         Spacer(Modifier.height(20.dp))
         DescriptionSection(desc, onDescChange)
         Spacer(Modifier.height(24.dp))
@@ -629,10 +690,80 @@ private fun CategoryPickerSection(
 }
 
 @RequiresApi(Build.VERSION_CODES.O)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TimeDateSection() {
-    val currentTime = remember { LocalTime.now().format(DateTimeFormatter.ofPattern("HH : mm")) }
-    val currentDate = remember { LocalDate.now().format(DateTimeFormatter.ofPattern("d/M/yyyy")) }
+private fun TimeDateSection(
+    selectedDate: LocalDate,
+    onDateChange: (LocalDate) -> Unit,
+    selectedTime: LocalTime,
+    onTimeChange: (LocalTime) -> Unit
+) {
+    var showDatePicker by remember { mutableStateOf(false) }
+    var showTimePicker by remember { mutableStateOf(false) }
+
+    val timeText = remember(selectedTime) { selectedTime.format(DateTimeFormatter.ofPattern("HH : mm")) }
+    val dateText = remember(selectedDate) { selectedDate.format(DateTimeFormatter.ofPattern("d/M/yyyy")) }
+
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = selectedDate.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        onDateChange(Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate())
+                    }
+                    showDatePicker = false
+                }) {
+                    Text("OK", color = LiraTextPrimary, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("Cancel", color = LiraTextSecondary)
+                }
+            },
+            colors = DatePickerDefaults.colors(containerColor = LiraBackground)
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
+    if (showTimePicker) {
+        val timePickerState = rememberTimePickerState(
+            initialHour = selectedTime.hour,
+            initialMinute = selectedTime.minute,
+            is24Hour = true
+        )
+        AlertDialog(
+            onDismissRequest = { showTimePicker = false },
+            containerColor = LiraBackground,
+            shape = RoundedCornerShape(20.dp),
+            title = {
+                Text("Select Time", color = LiraTextPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            },
+            text = {
+                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    TimePicker(state = timePickerState)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    onTimeChange(LocalTime.of(timePickerState.hour, timePickerState.minute))
+                    showTimePicker = false
+                }) {
+                    Text("OK", color = LiraTextPrimary, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showTimePicker = false }) {
+                    Text("Cancel", color = LiraTextSecondary)
+                }
+            }
+        )
+    }
 
     Text("Time / Date", color = LiraTextPrimary, fontWeight = FontWeight.Medium)
     Spacer(Modifier.height(12.dp))
@@ -640,9 +771,37 @@ private fun TimeDateSection() {
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        LiraReadOnlyField(currentTime, Modifier.weight(1f))
+        LiraReadOnlyField(timeText, Modifier.weight(1f).clickable { showTimePicker = true })
         Text("/", color = LiraTextPrimary, fontSize = 16.sp)
-        LiraReadOnlyField(currentDate, Modifier.weight(1f))
+        LiraReadOnlyField(dateText, Modifier.weight(1f).clickable { showDatePicker = true })
+    }
+}
+
+@Composable
+private fun CurrencyChipRow(currencies: List<String>, selected: String?, onSelect: (String) -> Unit) {
+    Text("Currency", color = LiraTextPrimary, fontWeight = FontWeight.Medium)
+    Spacer(Modifier.height(12.dp))
+    Row(
+        modifier = Modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        currencies.forEach { code ->
+            val isSelected = code == selected
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(if (isSelected) Color.White else LiraBorder.copy(alpha = 0.4f))
+                    .clickable { onSelect(code) }
+                    .padding(horizontal = 16.dp, vertical = 10.dp)
+            ) {
+                Text(
+                    text = code,
+                    color = if (isSelected) Color.Black else LiraTextPrimary,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp
+                )
+            }
+        }
     }
 }
 

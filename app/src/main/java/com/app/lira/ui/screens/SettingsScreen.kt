@@ -117,16 +117,25 @@ fun SettingsScreen(navController: NavController) {
 
             Spacer(Modifier.height(28.dp))
 
-            SectionLabel("General")
+            SectionLabel("Budget")
             Spacer(Modifier.height(10.dp))
             SpendingLimitsSection(scope)
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(24.dp))
 
+            SectionLabel("Preferences")
+            Spacer(Modifier.height(10.dp))
             CurrencySection()
+            Spacer(Modifier.height(10.dp))
+            NavigationRow(
+                label = "Currency Converter",
+                onClick = { navController.navigate(Routes.CURRENCY_CONVERTER) }
+            )
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(24.dp))
 
+            SectionLabel("Data")
+            Spacer(Modifier.height(10.dp))
             NavigationRow(
                 label = "Manage Categories",
                 onClick = { navController.navigate(Routes.MANAGE_CATEGORIES) }

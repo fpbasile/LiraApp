@@ -50,7 +50,7 @@ fun LiraBottomNavBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(32.dp, Alignment.CenterHorizontally),
+            horizontalArrangement = Arrangement.spacedBy(20.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically
         ) {
             LiraBottomNavItem(
@@ -65,6 +65,13 @@ fun LiraBottomNavBar(
                 label = "Calendar",
                 isSelected = currentRoute == Routes.CALENDAR,
                 onClick = { onNavigate(Routes.CALENDAR) }
+            )
+
+            LiraBottomNavItem(
+                iconRes = R.drawable.ic_travel,
+                label = "Travel",
+                isSelected = currentRoute == Routes.TRAVELLING,
+                onClick = { onNavigate(Routes.TRAVELLING) }
             )
         }
     }

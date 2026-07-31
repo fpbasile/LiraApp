@@ -15,6 +15,8 @@ Built with Kotlin, Jetpack Compose, and Supabase.
 - **Home screen widget** — today/week/month spending at a glance, with a one-tap camera shortcut straight into receipt scanning
 - **Categories** you manage yourself — add, rename, delete
 - **EUR/USD** currency display (on-device preference, not a real conversion)
+- **Currency converter** — live rates across ~380 currencies (keyless, no API limits), plus a "Quick Convert" card on the Travelling tab
+- **Travelling** — create trips (e.g. a country) with one or more real currencies, activate one to log expenses in local currency through the same form as Home, and see per-trip totals auto-converted back to your home currency
 
 ## Tech stack
 
@@ -22,6 +24,7 @@ Built with Kotlin, Jetpack Compose, and Supabase.
 - **Backend**: [Supabase](https://supabase.com) — Postgrest (database), Auth, Edge Functions
 - **AI**: Google Gemini, called from a Supabase Edge Function for receipt OCR/extraction
 - **Widget**: [Jetpack Glance](https://developer.android.com/jetpack/androidx/releases/glance)
+- **Exchange rates**: [currency-api](https://github.com/fawazahmed0/currency-api) (free, keyless, CDN-hosted), via Ktor's HTTP client
 - **Min SDK**: 26 (Android 8.0)
 
 ## Setup
@@ -30,7 +33,7 @@ Built with Kotlin, Jetpack Compose, and Supabase.
 
 You'll need your own Supabase project with:
 
-- Tables for transactions, categories, recurring entries, and spending limits, matching the shapes in `app/src/main/java/com/app/lira/data/repository/`
+- Tables for transactions, categories, recurring entries, spending limits, and trips, matching the shapes in `app/src/main/java/com/app/lira/data/repository/`
 - Row Level Security policies scoping every table to `auth.uid() = user_id`
 - An Edge Function (see `app/src/main/java/com/app/lira/data/repository/ReceiptRepository.kt` for the expected request/response shape) with a `GEMINI_API_KEY` secret configured, for receipt scanning
 
