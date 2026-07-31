@@ -51,6 +51,7 @@ import com.app.lira.ui.theme.*
 import androidx.compose.ui.text.style.TextAlign
 import com.app.lira.util.compressReceiptImage
 import com.app.lira.util.createReceiptImageUri
+import com.app.lira.widget.WidgetActions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -155,6 +156,16 @@ fun AddPayedScreen(navController: NavController) {
         receiptError = null
         receiptInfo = null
         showReceiptHintDialog = true
+    }
+
+    // The widget's camera button skips the in-app hint dialog and jumps straight to the camera —
+    // that dialog exists to help first-time/occasional use, but the widget's whole purpose is speed.
+    val pendingScanReceipt by WidgetActions.pendingScanReceipt
+    LaunchedEffect(pendingScanReceipt) {
+        if (pendingScanReceipt) {
+            WidgetActions.pendingScanReceipt.value = false
+            beginReceiptCapture()
+        }
     }
 
     if (showReceiptHintDialog) {

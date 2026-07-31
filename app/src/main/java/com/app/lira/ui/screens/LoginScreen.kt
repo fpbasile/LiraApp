@@ -50,6 +50,7 @@ fun LoginScreen(navController: NavController) {
     var showPassword by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var infoMessage by remember { mutableStateOf<String?>(null) }
 
     Box(
         modifier = Modifier
@@ -88,7 +89,7 @@ fun LoginScreen(navController: NavController) {
             // --- Input Fields  ---
             LiraTextField(
                 value = email,
-                onValueChange = { email = it; errorMessage = null },
+                onValueChange = { email = it; errorMessage = null; infoMessage = null },
                 placeholder = "Email",
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
             )
@@ -97,7 +98,7 @@ fun LoginScreen(navController: NavController) {
 
             LiraTextField(
                 value = password,
-                onValueChange = { password = it; errorMessage = null },
+                onValueChange = { password = it; errorMessage = null; infoMessage = null },
                 placeholder = "Password",
                 visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -136,6 +137,28 @@ fun LoginScreen(navController: NavController) {
                 }
             }
 
+            // --- Info Message (e.g. "check your email to confirm") ---
+            infoMessage?.let {
+                Spacer(Modifier.height(16.dp))
+                val infoColor = Color(0xFF4CAF50)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(infoColor.copy(alpha = 0.12f))
+                        .border(1.dp, infoColor.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                ) {
+                    Text(
+                        text = it,
+                        color = infoColor,
+                        fontSize = 14.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+
             // --- Action Button ---
             Spacer(modifier = Modifier.height(32.dp))
 
@@ -147,22 +170,35 @@ fun LoginScreen(navController: NavController) {
                         scope.launch {
                             isLoading = true
                             errorMessage = null
+                            infoMessage = null
 
-                            // Call Sign In or Sign Up based on mode
-                            val result = if (isLoginMode) {
-                                AuthRepository.signIn(email.text, password.text)
-                            } else {
-                                AuthRepository.signUp(email.text, password.text)
-                            }
-
-                            isLoading = false
-
-                            if (result.isSuccess) {
-                                navController.navigate(Routes.ADD_PAYED) {
-                                    popUpTo(Routes.LOGIN) { inclusive = true }
+                            if (isLoginMode) {
+                                val result = AuthRepository.signIn(email.text, password.text)
+                                isLoading = false
+                                result.onSuccess {
+                                    navController.navigate(Routes.ADD_PAYED) {
+                                        popUpTo(Routes.LOGIN) { inclusive = true }
+                                    }
+                                }.onFailure { e ->
+                                    errorMessage = e.message ?: "An error occurred"
                                 }
                             } else {
-                                errorMessage = result.exceptionOrNull()?.message ?: "An error occurred"
+                                val result = AuthRepository.signUp(email.text, password.text)
+                                isLoading = false
+                                result.onSuccess { signedInImmediately ->
+                                    if (signedInImmediately) {
+                                        navController.navigate(Routes.ADD_PAYED) {
+                                            popUpTo(Routes.LOGIN) { inclusive = true }
+                                        }
+                                    } else {
+                                        // Project requires email confirmation — no session yet.
+                                        isLoginMode = true
+                                        password = TextFieldValue("")
+                                        infoMessage = "Account created! Check ${email.text} for a confirmation link, then log in here."
+                                    }
+                                }.onFailure { e ->
+                                    errorMessage = e.message ?: "An error occurred"
+                                }
                             }
                         }
                     },
@@ -192,6 +228,7 @@ fun LoginScreen(navController: NavController) {
                 modifier = Modifier.clickable {
                     isLoginMode = !isLoginMode // Toggles the UI mode
                     errorMessage = null
+                    infoMessage = null
                 }
             )
         }

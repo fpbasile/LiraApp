@@ -90,6 +90,9 @@ fun RecurringScreen(navController: NavController) {
                     }
                     isSavingAdd = false
                     result.onSuccess {
+                        // Otherwise a newly added (or just-edited) entry due today/earlier would
+                        // sit unposted until the next cold app start — post it right away instead.
+                        RecurringRepository.postDueOccurrences()
                         showAddDialog = false
                         editingEntry = null
                         refresh()

@@ -1,6 +1,7 @@
 package com.app.lira.data.repository
 
 import com.app.lira.data.remote.SupabaseClient
+import com.app.lira.widget.WidgetRefresher
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.exceptions.HttpRequestException
 import io.github.jan.supabase.postgrest.exception.PostgrestRestException
@@ -111,6 +112,7 @@ object TransactionRepository {
                     recurringId = recurringId
                 )
             )
+            WidgetRefresher.refresh()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(Exception(friendlyDbError(e)))
@@ -133,6 +135,7 @@ object TransactionRepository {
             }) {
                 filter { eq("id", id) }
             }
+            WidgetRefresher.refresh()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(Exception(friendlyDbError(e)))
@@ -142,6 +145,7 @@ object TransactionRepository {
     suspend fun deleteTransaction(id: Int): Result<Unit> = withContext(Dispatchers.IO) {
         return@withContext try {
             client.postgrest["transactions"].delete { filter { eq("id", id) } }
+            WidgetRefresher.refresh()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(Exception(friendlyDbError(e)))
@@ -274,8 +278,14 @@ object TransactionRepository {
     /** Sum of this (Monday-starting) week's "payed" transactions for the current user. */
     suspend fun getWeekSpent(): Result<Double> = sumByType(TYPE_PAYED, weekRange())
 
+    /** Sum of this (Monday-starting) week's "received" transactions for the current user. */
+    suspend fun getWeekReceived(): Result<Double> = sumByType(TYPE_RECEIVED, weekRange())
+
     /** Sum of this calendar month's "payed" transactions for the current user. */
     suspend fun getMonthSpent(): Result<Double> = sumByType(TYPE_PAYED, monthRange())
+
+    /** Sum of this calendar month's "received" transactions for the current user. */
+    suspend fun getMonthReceived(): Result<Double> = sumByType(TYPE_RECEIVED, monthRange())
 
     private suspend fun sumByType(type: String, range: Pair<String, String>): Result<Double> = withContext(Dispatchers.IO) {
         val userId = client.auth.currentUserOrNull()?.id

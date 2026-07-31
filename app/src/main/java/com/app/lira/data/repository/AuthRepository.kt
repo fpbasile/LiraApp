@@ -14,14 +14,19 @@ object AuthRepository {
 
     private val client = SupabaseClient.client
 
-    // --- Sign up function ---
-    suspend fun signUp(email: String, password: String): Result<String> = withContext(Dispatchers.IO) {
+    /**
+     * Signs up with [email]/[password]. Returns whether the account is signed in immediately.
+     * If the Supabase project requires email confirmation, the account is created but no session
+     * is issued until the confirmation link is clicked — this returns `false` in that case so the
+     * caller can prompt the user to check their inbox instead of treating this as a normal login.
+     */
+    suspend fun signUp(email: String, password: String): Result<Boolean> = withContext(Dispatchers.IO) {
         return@withContext try {
             client.auth.signUpWith(Email) {
                 this.email = email
                 this.password = password
             }
-            Result.success("Account created successfully!")
+            Result.success(client.auth.currentSessionOrNull() != null)
         } catch (e: Exception) {
             Result.failure(Exception(friendlyAuthError(e)))
         }

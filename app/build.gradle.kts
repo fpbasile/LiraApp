@@ -24,6 +24,10 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
+            // Signed with the debug keystore so `installRelease` can push straight to a device
+            // over USB for local performance testing. Swap in a real release keystore before
+            // ever publishing this build anywhere.
+            signingConfig = signingConfigs.getByName("debug")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -81,6 +85,9 @@ dependencies {
     implementation("io.github.jan-tennert.supabase:compose-auth:3.2.5")
 
 
+
+    // --- Home screen widget ---
+    implementation("androidx.glance:glance-appwidget:1.1.1")
 
     // --- Utilities ---
     implementation("com.google.accompanist:accompanist-systemuicontroller:0.33.2-alpha")

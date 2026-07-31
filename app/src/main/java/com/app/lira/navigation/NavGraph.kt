@@ -17,6 +17,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
@@ -41,6 +42,7 @@ import com.app.lira.ui.screens.SettingsScreen
 import com.app.lira.ui.screens.TransactionsScreen
 import com.app.lira.ui.theme.LiraBackground
 import com.app.lira.ui.theme.LiraTextSecondary
+import com.app.lira.widget.WidgetActions
 import io.github.jan.supabase.auth.auth
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
@@ -58,6 +60,10 @@ object Routes {
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun NavGraph(navController: NavHostController) {
+
+    // Lets the widget's camera button jump straight to Add Payed if the app is already running
+    // elsewhere (see WidgetActions.requestScanReceipt).
+    SideEffect { WidgetActions.navController = navController }
 
     var isCheckingSession by remember { mutableStateOf(true) }
     var startDestination by remember { mutableStateOf(Routes.LOGIN) }
