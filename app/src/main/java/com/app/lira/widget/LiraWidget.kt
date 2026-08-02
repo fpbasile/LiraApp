@@ -38,6 +38,7 @@ import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.layout.size
+import androidx.glance.layout.width
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
@@ -93,7 +94,9 @@ private data class WidgetData(
 /** Switches the widget's displayed period in place (no app launch) — triggered by tapping D/W/M. */
 class SwitchWidgetPeriodAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
-        val target = parameters[TargetPeriodParam] ?: return
+        val target = parameters[TargetPeriodParam]
+        Log.d("LiraWidget", "SwitchWidgetPeriodAction: target=$target")
+        if (target == null) return
         updateAppWidgetState(context, glanceId) { prefs -> prefs[PeriodPrefKey] = target }
         LiraWidget().update(context, glanceId)
     }
@@ -165,7 +168,10 @@ private fun LiraWidgetContent(data: WidgetData) {
             Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 if (data.isSignedIn) {
                     Row(modifier = GlanceModifier.defaultWeight(), verticalAlignment = Alignment.CenterVertically) {
-                        WidgetPeriod.entries.forEach { period ->
+                        WidgetPeriod.entries.forEachIndexed { index, period ->
+                            if (index > 0) {
+                                Spacer(modifier = GlanceModifier.width(8.dp))
+                            }
                             PeriodTab(period = period, isSelected = period == selectedPeriod)
                         }
                     }
@@ -266,8 +272,8 @@ private fun LiraWidgetContent(data: WidgetData) {
 private fun PeriodTab(period: WidgetPeriod, isSelected: Boolean) {
     Box(
         modifier = GlanceModifier
-            .size(26.dp)
-            .cornerRadius(13.dp)
+            .size(40.dp)
+            .cornerRadius(20.dp)
             .background(if (isSelected) WidgetAccentColor.copy(alpha = 0.22f) else Color.Transparent)
             .clickable(
                 actionRunCallback<SwitchWidgetPeriodAction>(

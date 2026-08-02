@@ -46,6 +46,7 @@ import com.app.lira.ui.components.IncomeColor
 import com.app.lira.ui.components.LiraBottomNavBar
 import com.app.lira.ui.components.LiraTextField
 import com.app.lira.ui.theme.*
+import com.app.lira.util.formatWithSpaces
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -420,7 +421,7 @@ private fun QuickConvertCard() {
                 ) {
                     val convertedText = when {
                         isConverting -> "…"
-                        else -> result?.rates?.get(toCode)?.let { String.format("%.2f", it) } ?: "—"
+                        else -> result?.rates?.get(toCode)?.let { formatWithSpaces(it) } ?: "—"
                     }
                     Text(convertedText, color = LiraTextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                 }
@@ -537,7 +538,7 @@ internal fun TripOverviewCard(
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text(code, color = LiraTextSecondary, fontSize = 14.sp)
                         Text(
-                            text = String.format("%.2f %s", amt, code),
+                            text = "${formatWithSpaces(amt)} $code",
                             color = LiraTextPrimary,
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 14.sp
@@ -556,7 +557,7 @@ internal fun TripOverviewCard(
                         Text("…", color = LiraTextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                     } else {
                         Text(
-                            text = String.format("%s%.2f", homeSymbol, grandTotal),
+                            text = "$homeSymbol${formatWithSpaces(grandTotal)}",
                             color = ExpenseColor,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold

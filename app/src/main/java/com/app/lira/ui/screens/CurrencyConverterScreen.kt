@@ -28,6 +28,7 @@ import com.app.lira.data.repository.CurrencyConverterRepository
 import com.app.lira.data.repository.ExchangeRateResult
 import com.app.lira.ui.components.LiraTextField
 import com.app.lira.ui.theme.*
+import com.app.lira.util.formatWithSpaces
 import kotlinx.coroutines.delay
 
 private val ErrorColor = Color(0xFFE53935)
@@ -155,7 +156,7 @@ fun CurrencyConverterScreen(navController: NavController) {
                     AmountCard(
                         label = "Converted",
                         amount = TextFieldValue(
-                            if (isConverting) "…" else result?.rates?.get(toCode)?.let { String.format("%.2f", it) } ?: "—"
+                            if (isConverting) "…" else result?.rates?.get(toCode)?.let { formatWithSpaces(it) } ?: "—"
                         ),
                         onAmountChange = {},
                         currencyCode = toCode,
@@ -175,13 +176,13 @@ fun CurrencyConverterScreen(navController: NavController) {
                         val rate = r.rates[toCode]
                         if (rate != null && r.amount > 0) {
                             Text(
-                                text = "1 $fromCode = ${String.format("%.4f", rate / r.amount)} $toCode",
+                                text = "1 $fromCode = ${formatWithSpaces(rate / r.amount, decimals = 4)} $toCode",
                                 color = LiraTextSecondary,
                                 fontSize = 13.sp
                             )
                             Spacer(Modifier.height(4.dp))
                             Text(
-                                text = "Rates as of ${r.date} · European Central Bank",
+                                text = "Rates as of ${r.date}",
                                 color = LiraTextSecondary.copy(alpha = 0.7f),
                                 fontSize = 12.sp
                             )
