@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Lira mark (Wire-L): one wire ending in the Lichen 'saved' dot. 72-unit crop of the 108 icon grid. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="72"
+    android:viewportHeight="72">
+    <group
+        android:translateX="-19"
+        android:translateY="-17">
+        <path
+            android:fillColor="#00000000"
+            android:strokeColor="#F5F5F4"
+            android:strokeWidth="6"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:pathData="M66,57H55V38A11,11 0,0 0,33 38V68A11,11 0,0 0,44 79H70A5.5,5.5 0,0 0,70 68H44V46" />
+        <path
+            android:fillColor="#5D926D"
+            android:pathData="M71,57a5,5 0,1 1,10 0a5,5 0,1 1,-10 0z" />
+    </group>
+</vector>

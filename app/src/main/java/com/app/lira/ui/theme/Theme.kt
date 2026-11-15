@@ -1,57 +1,54 @@
 package com.app.lira.ui.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.Font
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.unit.sp
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
-import com.app.lira.R
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.runtime.Composable
 
-private val DarkColorScheme = darkColorScheme(
-    primary = LiraBackground,
-    secondary = BorderGray,
-    background = LiraBackground,
-    surface = LiraBackground,
-    onPrimary = TextWhite,
-    onBackground = LiraTextSecondary,
-    onSurface = LiraTextSecondary
+private val LiraColorScheme = darkColorScheme(
+    primary = LiraColors.TextPrimary,
+    onPrimary = LiraColors.Base,
+    secondary = LiraColors.TextSecondary,
+    onSecondary = LiraColors.Base,
+    tertiary = LiraColors.Lichen,
+    background = LiraColors.Base,
+    onBackground = LiraColors.TextPrimary,
+    surface = LiraColors.Surface1,
+    onSurface = LiraColors.TextPrimary,
+    surfaceVariant = LiraColors.Surface2,
+    onSurfaceVariant = LiraColors.TextSecondary,
+    surfaceContainer = LiraColors.Surface1,
+    surfaceContainerLow = LiraColors.Surface1,
+    surfaceContainerHigh = LiraColors.Surface3,
+    surfaceContainerHighest = LiraColors.Surface3,
+    outline = LiraColors.TextDisabled,
+    outlineVariant = LiraColors.Line,
+    error = LiraColors.OverLimit,
+    scrim = LiraColors.Scrim
 )
 
-val InterFont = FontFamily(
-    Font(R.font.inter_medium),
-    Font(R.font.inter_medium),
-    Font(R.font.inter_bold)
+private val LiraTypography = Typography(
+    bodyLarge = LiraType.BodyL,
+    bodyMedium = LiraType.BodyM,
+    bodySmall = LiraType.BodyS,
+    labelLarge = LiraType.Label,
+    titleLarge = LiraType.TitleM,
+    headlineMedium = LiraType.TitleL
 )
 
-val Typo = Typography(
-    bodyLarge = TextStyle(
-        fontFamily = InterFont,
-        fontSize = 16.sp,
-        color = TextWhite
-    ),
-    labelLarge = TextStyle(
-        fontFamily = InterFont,
-        fontSize = 14.sp,
-        color = LiraTextSecondary
-    ),
-    titleLarge = TextStyle(
-        fontFamily = InterFont,
-        fontSize = 20.sp,
-        color = TextWhite
-    )
-)
+/** Motion tokens (Motion board). */
+object LiraMotion {
+    val Standard = FastOutSlowInEasing
+    val Emphasized = CubicBezierEasing(0.65f, 0f, 0.35f, 1f)
+    val Settle = CubicBezierEasing(0.33f, 1f, 0.68f, 1f) // EaseOutCubic
+    const val MICRO = 120
+    const val STANDARD = 220
+    const val UNDO_WINDOW_MS = 4000L
+}
 
 @Composable
-fun LiraTheme(
-    content: @Composable () -> Unit
-) {
-    MaterialTheme(
-        colorScheme = DarkColorScheme,
-        typography = Typo,
-        content = content
-    )
+fun LiraTheme(content: @Composable () -> Unit) {
+    MaterialTheme(colorScheme = LiraColorScheme, typography = LiraTypography, content = content)
 }

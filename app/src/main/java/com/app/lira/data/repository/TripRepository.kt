@@ -1,6 +1,8 @@
 package com.app.lira.data.repository
 
 import com.app.lira.data.model.Trip
+import com.app.lira.data.local.DataMode
+import com.app.lira.data.local.LocalDb
 import com.app.lira.data.remote.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.exceptions.HttpRequestException
@@ -24,6 +26,7 @@ object TripRepository {
     private val client = SupabaseClient.client
 
     suspend fun getTrips(): Result<List<Trip>> = withContext(Dispatchers.IO) {
+        if (DataMode.isLocal) return@withContext Result.success(LocalDb.trips())
         val userId = client.auth.currentUserOrNull()?.id
             ?: return@withContext Result.failure(Exception("You're not signed in."))
 
@@ -39,6 +42,7 @@ object TripRepository {
     }
 
     suspend fun getTrip(id: Int): Result<Trip?> = withContext(Dispatchers.IO) {
+        if (DataMode.isLocal) return@withContext Result.success(LocalDb.trip(id))
         return@withContext try {
             val rows = client.postgrest["trips"].select {
                 filter { eq("id", id) }
@@ -51,6 +55,7 @@ object TripRepository {
     }
 
     suspend fun addTrip(name: String, currencies: List<String>): Result<Trip> = withContext(Dispatchers.IO) {
+        if (DataMode.isLocal) return@withContext Result.success(LocalDb.addTrip(name, currencies))
         val userId = client.auth.currentUserOrNull()?.id
             ?: return@withContext Result.failure(Exception("You're not signed in."))
 
@@ -65,6 +70,7 @@ object TripRepository {
     }
 
     suspend fun deleteTrip(id: Int): Result<Unit> = withContext(Dispatchers.IO) {
+        if (DataMode.isLocal) return@withContext Result.success(LocalDb.deleteTrip(id))
         return@withContext try {
             client.postgrest["trips"].delete { filter { eq("id", id) } }
             Result.success(Unit)
@@ -75,6 +81,7 @@ object TripRepository {
 
     /** Sets [id] as the only active trip (pass null to just clear the current active trip). */
     suspend fun setActiveTrip(id: Int?): Result<Unit> = withContext(Dispatchers.IO) {
+        if (DataMode.isLocal) return@withContext Result.success(LocalDb.setActiveTrip(id))
         val userId = client.auth.currentUserOrNull()?.id
             ?: return@withContext Result.failure(Exception("You're not signed in."))
 

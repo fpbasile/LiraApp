@@ -29,6 +29,10 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         CurrencyPreference.init(this)
+        com.app.lira.data.CategoryStyle.init(this)
+        com.app.lira.data.AppPrefs.init(this)
+        com.app.lira.data.local.LocalDb.init(this)
+        com.app.lira.ui.screens.travel.TripLocalStore.init(this)
         WidgetRefresher.init(this)
         handleIntent(intent)
         setContent {
@@ -45,6 +49,8 @@ class MainActivity : ComponentActivity() {
     private fun handleIntent(intent: Intent) {
         if (intent.getBooleanExtra(EXTRA_SCAN_RECEIPT, false)) {
             WidgetActions.requestScanReceipt()
+        } else if (intent.getBooleanExtra(WidgetActions.EXTRA_QUICK_ADD, false)) {
+            WidgetActions.requestQuickAdd()
         }
     }
 }

@@ -1,0 +1,546 @@
+{
+ "v": 3,
+ "createdOnFiles": {
+  "v": 1,
+  "at": "2026-11-14T21:02:23Z"
+ },
+ "title": "Lira — UI/UX redesign",
+ "launch": {
+  "view": "canvas",
+  "page": "core"
+ },
+ "pages": [
+  {
+   "id": "system",
+   "name": "1 · Design system"
+  },
+  {
+   "id": "brand",
+   "name": "2 · Logo & icon"
+  },
+  {
+   "id": "core",
+   "name": "3 · Core experience"
+  },
+  {
+   "id": "onboarding",
+   "name": "4 · Onboarding"
+  },
+  {
+   "id": "secondary",
+   "name": "5 · Secondary screens"
+  },
+  {
+   "id": "motion",
+   "name": "6 · Motion"
+  }
+ ],
+ "boards": {
+  "Tokens.dc.html": {
+   "x": 0,
+   "y": 0,
+   "w": 1440,
+   "h": 3420,
+   "title": "Tokens",
+   "page": "system"
+  },
+  "Components.dc.html": {
+   "x": 1520,
+   "y": 0,
+   "w": 1440,
+   "h": 3320,
+   "title": "Components",
+   "page": "system"
+  },
+  "Logo.dc.html": {
+   "x": 0,
+   "y": 0,
+   "w": 1440,
+   "h": 3040,
+   "title": "Logo & app icon",
+   "page": "brand"
+  },
+  "Main.dc.html": {
+   "x": 0,
+   "y": 0,
+   "w": 412,
+   "h": 915,
+   "title": "Quick add · interactive prototype",
+   "page": "core",
+   "is_interactive": true
+  },
+  "Home-Empty.dc.html": {
+   "x": 492,
+   "y": 0,
+   "w": 412,
+   "h": 915,
+   "title": "Home · empty",
+   "page": "core"
+  },
+  "Home-Typing.dc.html": {
+   "x": 984,
+   "y": 0,
+   "w": 412,
+   "h": 915,
+   "title": "Home · typing",
+   "page": "core"
+  },
+  "Home-Picked.dc.html": {
+   "x": 1476,
+   "y": 0,
+   "w": 412,
+   "h": 915,
+   "title": "Home · category picked first",
+   "page": "core"
+  },
+  "Home-Categories.dc.html": {
+   "x": 1968,
+   "y": 0,
+   "w": 412,
+   "h": 915,
+   "title": "Pick a category (More)",
+   "page": "core"
+  },
+  "Home-Currency.dc.html": {
+   "x": 2460,
+   "y": 0,
+   "w": 412,
+   "h": 915,
+   "title": "Option chip · currency sheet",
+   "page": "core"
+  },
+  "Save-Moment.dc.html": {
+   "x": 0,
+   "y": 1355,
+   "w": 1848,
+   "h": 1197,
+   "title": "Save moment · sequence",
+   "page": "core"
+  },
+  "Save-OverLimit.dc.html": {
+   "x": 1928,
+   "y": 1355,
+   "w": 412,
+   "h": 915,
+   "title": "Save · over the limit",
+   "page": "core"
+  },
+  "Scan-Camera.dc.html": {
+   "x": 0,
+   "y": 2992,
+   "w": 412,
+   "h": 915,
+   "title": "Scan · camera",
+   "page": "core"
+  },
+  "Scan-Review.dc.html": {
+   "x": 492,
+   "y": 2992,
+   "w": 412,
+   "h": 915,
+   "title": "Scan · review & confirm",
+   "page": "core"
+  },
+  "Today.dc.html": {
+   "x": 0,
+   "y": 4347,
+   "w": 412,
+   "h": 915,
+   "title": "Today sheet",
+   "page": "core"
+  },
+  "Recap-Home.dc.html": {
+   "x": 492,
+   "y": 4347,
+   "w": 412,
+   "h": 915,
+   "title": "Weekly recap on Home (Monday)",
+   "page": "core"
+  },
+  "Insights.dc.html": {
+   "x": 984,
+   "y": 4347,
+   "w": 412,
+   "h": 3060,
+   "title": "Insights · full scroll",
+   "page": "core"
+  },
+  "Travel-Home.dc.html": {
+   "x": 0,
+   "y": 7847,
+   "w": 412,
+   "h": 915,
+   "title": "Travel · Home with active trip",
+   "page": "core"
+  },
+  "Trip.dc.html": {
+   "x": 492,
+   "y": 7847,
+   "w": 412,
+   "h": 1400,
+   "title": "Travel · trip view (full scroll)",
+   "page": "core"
+  },
+  "Trip-Start.dc.html": {
+   "x": 984,
+   "y": 7847,
+   "w": 412,
+   "h": 915,
+   "title": "Travel · start a trip",
+   "page": "core"
+  },
+  "Widgets.dc.html": {
+   "x": 0,
+   "y": 9687,
+   "w": 1320,
+   "h": 1080,
+   "title": "Home screen widget",
+   "page": "core"
+  },
+  "Login.dc.html": {
+   "x": 0,
+   "y": 0,
+   "w": 412,
+   "h": 915,
+   "title": "Log in",
+   "page": "secondary"
+  },
+  "More.dc.html": {
+   "x": 492,
+   "y": 0,
+   "w": 412,
+   "h": 915,
+   "title": "More / settings",
+   "page": "secondary"
+  },
+  "Categories.dc.html": {
+   "x": 984,
+   "y": 0,
+   "w": 412,
+   "h": 915,
+   "title": "Manage categories",
+   "page": "secondary"
+  },
+  "Recurring.dc.html": {
+   "x": 1476,
+   "y": 0,
+   "w": 412,
+   "h": 915,
+   "title": "Recurring",
+   "page": "secondary"
+  },
+  "Recurring-Edit.dc.html": {
+   "x": 1968,
+   "y": 0,
+   "w": 412,
+   "h": 915,
+   "title": "Recurring · add / edit",
+   "page": "secondary"
+  },
+  "Converter.dc.html": {
+   "x": 0,
+   "y": 1355,
+   "w": 412,
+   "h": 915,
+   "title": "Currency converter",
+   "page": "secondary"
+  },
+  "Currency-Picker.dc.html": {
+   "x": 492,
+   "y": 1355,
+   "w": 412,
+   "h": 915,
+   "title": "Currency picker",
+   "page": "secondary"
+  },
+  "Edit-Entry.dc.html": {
+   "x": 984,
+   "y": 1355,
+   "w": 412,
+   "h": 915,
+   "title": "Edit transaction",
+   "page": "secondary"
+  },
+  "Empty-First.dc.html": {
+   "x": 0,
+   "y": 2710,
+   "w": 412,
+   "h": 915,
+   "title": "Empty · first launch",
+   "page": "secondary"
+  },
+  "Empty-Today.dc.html": {
+   "x": 492,
+   "y": 2710,
+   "w": 412,
+   "h": 915,
+   "title": "Empty · nothing today",
+   "page": "secondary"
+  },
+  "Empty-Trips.dc.html": {
+   "x": 984,
+   "y": 2710,
+   "w": 412,
+   "h": 915,
+   "title": "Empty · no trips",
+   "page": "secondary"
+  },
+  "Motion.dc.html": {
+   "x": 0,
+   "y": 0,
+   "w": 1280,
+   "h": 2520,
+   "title": "Motion notes",
+   "page": "motion"
+  },
+  "Onb-Welcome.dc.html": {
+   "x": 0,
+   "y": 0,
+   "w": 412,
+   "h": 915,
+   "title": "Onboarding · welcome",
+   "page": "onboarding"
+  },
+  "Onb-Currency.dc.html": {
+   "x": 492,
+   "y": 0,
+   "w": 412,
+   "h": 915,
+   "title": "Onboarding · 1 home currency",
+   "page": "onboarding"
+  },
+  "Onb-Limit.dc.html": {
+   "x": 984,
+   "y": 0,
+   "w": 412,
+   "h": 915,
+   "title": "Onboarding · 2 daily limit",
+   "page": "onboarding"
+  },
+  "Onb-FirstLog.dc.html": {
+   "x": 1476,
+   "y": 0,
+   "w": 412,
+   "h": 915,
+   "title": "Onboarding · 3 first log",
+   "page": "onboarding"
+  },
+  "Onb-Done.dc.html": {
+   "x": 1968,
+   "y": 0,
+   "w": 412,
+   "h": 915,
+   "title": "Onboarding · done",
+   "page": "onboarding"
+  }
+ },
+ "order": [
+  "Main.dc.html",
+  "Tokens.dc.html",
+  "Components.dc.html",
+  "Logo.dc.html",
+  "Home-Empty.dc.html",
+  "Home-Typing.dc.html",
+  "Home-Picked.dc.html",
+  "Home-Categories.dc.html",
+  "Home-Currency.dc.html",
+  "Save-Moment.dc.html",
+  "Save-OverLimit.dc.html",
+  "Scan-Camera.dc.html",
+  "Scan-Review.dc.html",
+  "Today.dc.html",
+  "Recap-Home.dc.html",
+  "Insights.dc.html",
+  "Travel-Home.dc.html",
+  "Trip.dc.html",
+  "Trip-Start.dc.html",
+  "Widgets.dc.html",
+  "Login.dc.html",
+  "More.dc.html",
+  "Categories.dc.html",
+  "Recurring.dc.html",
+  "Recurring-Edit.dc.html",
+  "Converter.dc.html",
+  "Currency-Picker.dc.html",
+  "Edit-Entry.dc.html",
+  "Empty-First.dc.html",
+  "Empty-Today.dc.html",
+  "Empty-Trips.dc.html",
+  "Motion.dc.html",
+  "Onb-Welcome.dc.html",
+  "Onb-Currency.dc.html",
+  "Onb-Limit.dc.html",
+  "Onb-FirstLog.dc.html",
+  "Onb-Done.dc.html"
+ ],
+ "notes": {
+  "system-r0-t": {
+   "x": 0,
+   "y": -300,
+   "text": "Design system",
+   "kind": "title1",
+   "maxW": 2960,
+   "page": "system"
+  },
+  "brand-r0-t": {
+   "x": 0,
+   "y": -300,
+   "text": "Logo & app icon",
+   "kind": "title1",
+   "maxW": 1440,
+   "page": "brand"
+  },
+  "core-r0-t": {
+   "x": 0,
+   "y": -300,
+   "text": "Home = quick add",
+   "kind": "title1",
+   "maxW": 2872,
+   "page": "core"
+  },
+  "core-r0-s": {
+   "x": 2952,
+   "y": 0,
+   "text": "The first board is a working prototype — press Play and log something: type an amount, tap a category, undo, flip to Income, or keep spending to see the over-limit state.\n\nAmount first → tapping a category saves instantly. Category first → the chip stays selected and ✓ saves.",
+   "w": 380,
+   "size": "m",
+   "fill": "gray",
+   "page": "core"
+  },
+  "core-r1-t": {
+   "x": 0,
+   "y": 1055,
+   "text": "The save moment",
+   "kind": "title1",
+   "maxW": 2340,
+   "page": "core"
+  },
+  "core-r1-s": {
+   "x": 2420,
+   "y": 1355,
+   "text": "Nothing waits to be dismissed: the keypad is clear at 60 ms and the first keypress hides the undo bar.\n\nOver the limit is the only place red appears — with words, and with the week still in view.",
+   "w": 380,
+   "size": "m",
+   "fill": "gray",
+   "page": "core"
+  },
+  "core-r2-t": {
+   "x": 0,
+   "y": 2692,
+   "text": "Scan a receipt",
+   "kind": "title1",
+   "maxW": 1200,
+   "page": "core"
+  },
+  "core-r2-s": {
+   "x": 984,
+   "y": 2992,
+   "text": "Scan sits next to Save on the keypad. After the photo, you land on the same quick-add screen, pre-filled — review, correct with the keypad, save.",
+   "w": 380,
+   "size": "m",
+   "fill": "gray",
+   "page": "core"
+  },
+  "core-r3-t": {
+   "x": 0,
+   "y": 4047,
+   "text": "Today, weekly recap & Insights",
+   "kind": "title1",
+   "maxW": 1396,
+   "page": "core"
+  },
+  "core-r3-s": {
+   "x": 1476,
+   "y": 4347,
+   "text": "Insights replaces Calendar + Stats: written insights first, then the month calendar, trend, categories and weekdays.\n\nThe recap card shows once on Monday and tucks into Insights at the first keypress.",
+   "w": 380,
+   "size": "m",
+   "fill": "gray",
+   "page": "core"
+  },
+  "core-r4-t": {
+   "x": 0,
+   "y": 7547,
+   "text": "Travel mode",
+   "kind": "title1",
+   "maxW": 1396,
+   "page": "core"
+  },
+  "core-r4-s": {
+   "x": 1476,
+   "y": 7847,
+   "text": "Navigation: three tabs — Home · Insights · More. Travel is a mode, not a tab: start it from the currency chip (or More › Trips); while it runs, Home shows the trip banner, which opens the trip view.",
+   "w": 380,
+   "size": "m",
+   "fill": "gray",
+   "page": "core"
+  },
+  "core-r5-t": {
+   "x": 0,
+   "y": 9387,
+   "text": "Home screen widget",
+   "kind": "title1",
+   "maxW": 1320,
+   "page": "core"
+  },
+  "secondary-r0-t": {
+   "x": 0,
+   "y": -300,
+   "text": "Account & settings",
+   "kind": "title1",
+   "maxW": 2380,
+   "page": "secondary"
+  },
+  "secondary-r0-s": {
+   "x": 2460,
+   "y": 0,
+   "text": "Every money input — recurring, edit, converter — reuses quick-add: amount on top, chips in the middle, keypad at the bottom.",
+   "w": 380,
+   "size": "m",
+   "fill": "gray",
+   "page": "secondary"
+  },
+  "secondary-r1-t": {
+   "x": 0,
+   "y": 1055,
+   "text": "Tools & editing",
+   "kind": "title1",
+   "maxW": 1396,
+   "page": "secondary"
+  },
+  "secondary-r2-t": {
+   "x": 0,
+   "y": 2410,
+   "text": "Empty states",
+   "kind": "title1",
+   "maxW": 1396,
+   "page": "secondary"
+  },
+  "motion-r0-t": {
+   "x": 0,
+   "y": -300,
+   "text": "Motion notes",
+   "kind": "title1",
+   "maxW": 1280,
+   "page": "motion"
+  },
+  "onboarding-r0-t": {
+   "x": 0,
+   "y": -300,
+   "text": "Onboarding — two questions, then you log for real",
+   "kind": "title1",
+   "maxW": 2380,
+   "page": "onboarding"
+  },
+  "onboarding-r0-s": {
+   "x": 2460,
+   "y": 0,
+   "text": "No feature tour. After sign-up Lira asks two things — home currency and a daily limit — then drops you on the real Home with one coach card: you learn by logging.\n\nThe currency is pre-filled from your region (one tap); the limit can be skipped.",
+   "w": 380,
+   "size": "m",
+   "fill": "gray",
+   "page": "onboarding"
+  }
+ },
+ "designSystems": []
+}

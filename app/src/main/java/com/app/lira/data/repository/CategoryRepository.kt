@@ -1,6 +1,8 @@
 package com.app.lira.data.repository
 
 import com.app.lira.data.model.Category
+import com.app.lira.data.local.DataMode
+import com.app.lira.data.local.LocalDb
 import com.app.lira.data.remote.SupabaseClient
 import io.github.jan.supabase.exceptions.HttpRequestException
 import io.github.jan.supabase.postgrest.exception.PostgrestRestException
@@ -33,6 +35,7 @@ object CategoryRepository {
     private val client = SupabaseClient.client
 
     suspend fun getCategories(): Result<List<CategoryRow>> = withContext(Dispatchers.IO) {
+        if (DataMode.isLocal) { LocalDb.ensureSeeded(); return@withContext Result.success(LocalDb.categories()) }
         return@withContext try {
             val rows = client.postgrest["category"]
                 .select()
@@ -44,6 +47,7 @@ object CategoryRepository {
     }
 
     suspend fun addCategory(name: String): Result<CategoryRow> = withContext(Dispatchers.IO) {
+        if (DataMode.isLocal) return@withContext Result.success(LocalDb.addCategory(name))
         return@withContext try {
             val inserted = client.postgrest["category"]
                 .insert(NewCategoryRequest(name = name)) {
@@ -57,6 +61,7 @@ object CategoryRepository {
     }
 
     suspend fun updateCategory(id: Int, name: String): Result<CategoryRow> = withContext(Dispatchers.IO) {
+        if (DataMode.isLocal) return@withContext Result.success(LocalDb.renameCategory(id, name))
         return@withContext try {
             val updated = client.postgrest["category"].update({
                 set("name", name)
@@ -72,6 +77,7 @@ object CategoryRepository {
 
     /** Fails with a foreign-key error if any transaction still references this category. */
     suspend fun deleteCategory(id: Int): Result<Unit> = withContext(Dispatchers.IO) {
+        if (DataMode.isLocal) return@withContext Result.success(LocalDb.deleteCategory(id))
         return@withContext try {
             client.postgrest["category"].delete { filter { eq("id", id) } }
             Result.success(Unit)

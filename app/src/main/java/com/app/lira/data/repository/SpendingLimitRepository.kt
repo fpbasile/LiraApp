@@ -1,5 +1,7 @@
 package com.app.lira.data.repository
 
+import com.app.lira.data.local.DataMode
+import com.app.lira.data.local.LocalDb
 import com.app.lira.data.remote.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.exceptions.HttpRequestException
@@ -43,6 +45,7 @@ object SpendingLimitRepository {
 
     /** Null means the user hasn't set a limit for this [period] yet — there's no assumed default beyond daily. */
     suspend fun getLimit(period: String): Result<Double?> = withContext(Dispatchers.IO) {
+        if (DataMode.isLocal) return@withContext Result.success(LocalDb.limit(period))
         val userId = client.auth.currentUserOrNull()?.id
             ?: return@withContext Result.failure(Exception("You're not signed in."))
 
@@ -63,6 +66,7 @@ object SpendingLimitRepository {
 
     /** Creates or updates the user's limit row for [period] (no known unique constraint to rely on for a real upsert). */
     suspend fun setLimit(period: String, amount: Double): Result<Unit> = withContext(Dispatchers.IO) {
+        if (DataMode.isLocal) return@withContext Result.success(LocalDb.setLimit(period, amount))
         val userId = client.auth.currentUserOrNull()?.id
             ?: return@withContext Result.failure(Exception("You're not signed in."))
 

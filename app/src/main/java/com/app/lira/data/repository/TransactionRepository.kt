@@ -1,5 +1,8 @@
 package com.app.lira.data.repository
 
+import com.app.lira.data.local.DataMode
+import com.app.lira.data.local.LocalDb
+import com.app.lira.data.local.LocalTxn
 import com.app.lira.data.remote.SupabaseClient
 import com.app.lira.widget.WidgetRefresher
 import io.github.jan.supabase.auth.auth
@@ -105,6 +108,14 @@ object TransactionRepository {
         tripId: Int?,
         currency: String?
     ): Result<Unit> = withContext(Dispatchers.IO) {
+        if (DataMode.isLocal) {
+            LocalDb.insertTransaction(
+                LocalTxn(0, amount, type, dateIso, categoryId, source?.takeIf { it.isNotBlank() },
+                    description?.takeIf { it.isNotBlank() }, currency, tripId, recurringId)
+            )
+            WidgetRefresher.refresh()
+            return@withContext Result.success(Unit)
+        }
         val userId = client.auth.currentUserOrNull()?.id
             ?: return@withContext Result.failure(Exception("You're not signed in."))
 
@@ -137,6 +148,14 @@ object TransactionRepository {
         source: String?,
         description: String?
     ): Result<Unit> = withContext(Dispatchers.IO) {
+        if (DataMode.isLocal) {
+            LocalDb.updateTransaction(id) {
+                it.copy(amount = amount, category_id = categoryId, source = source?.takeIf { s -> s.isNotBlank() },
+                    description = description?.takeIf { d -> d.isNotBlank() })
+            }
+            WidgetRefresher.refresh()
+            return@withContext Result.success(Unit)
+        }
         return@withContext try {
             client.postgrest["transactions"].update({
                 set("amount", amount)
@@ -154,6 +173,11 @@ object TransactionRepository {
     }
 
     suspend fun deleteTransaction(id: Int): Result<Unit> = withContext(Dispatchers.IO) {
+        if (DataMode.isLocal) {
+            LocalDb.deleteTransaction(id)
+            WidgetRefresher.refresh()
+            return@withContext Result.success(Unit)
+        }
         return@withContext try {
             client.postgrest["transactions"].delete { filter { eq("id", id) } }
             WidgetRefresher.refresh()
@@ -165,6 +189,7 @@ object TransactionRepository {
 
     /** Today's transactions for the current user, newest first, with each one's category name embedded. */
     suspend fun getTodayTransactions(): Result<List<TransactionDetail>> = withContext(Dispatchers.IO) {
+        if (DataMode.isLocal) return@withContext Result.success(localDetails(todayRange()))
         val userId = client.auth.currentUserOrNull()?.id
             ?: return@withContext Result.failure(Exception("You're not signed in."))
 
@@ -189,6 +214,7 @@ object TransactionRepository {
 
     /** All transactions for the current user, newest first, with category names embedded (bounded to [limit] rows). */
     suspend fun getAllTransactions(limit: Long = 500): Result<List<TransactionDetail>> = withContext(Dispatchers.IO) {
+        if (DataMode.isLocal) return@withContext Result.success(localDetails(null).take(limit.toInt()))
         val userId = client.auth.currentUserOrNull()?.id
             ?: return@withContext Result.failure(Exception("You're not signed in."))
 
@@ -209,6 +235,10 @@ object TransactionRepository {
 
     /** All transactions in [yearMonth] for the current user, newest first, with category names embedded. */
     suspend fun getTransactionsForMonth(yearMonth: YearMonth): Result<List<TransactionDetail>> = withContext(Dispatchers.IO) {
+        if (DataMode.isLocal) {
+            val zone = ZoneId.systemDefault()
+            return@withContext Result.success(localDetails(dateRange(zone, yearMonth.atDay(1), yearMonth.plusMonths(1).atDay(1))))
+        }
         val userId = client.auth.currentUserOrNull()?.id
             ?: return@withContext Result.failure(Exception("You're not signed in."))
 
@@ -237,7 +267,7 @@ object TransactionRepository {
      * the current month), fetched as a single ranged query and aggregated client-side.
      */
     suspend fun getMonthlyTotals(monthsBack: Int): Result<List<MonthlyTotal>> = withContext(Dispatchers.IO) {
-        val userId = client.auth.currentUserOrNull()?.id
+        val userId = if (DataMode.isLocal) DataMode.LOCAL_USER else client.auth.currentUserOrNull()?.id
             ?: return@withContext Result.failure(Exception("You're not signed in."))
 
         return@withContext try {
@@ -246,7 +276,9 @@ object TransactionRepository {
             val startMonth = endMonth.minusMonths((monthsBack - 1).toLong())
             val (start, end) = dateRange(zone, startMonth.atDay(1), endMonth.plusMonths(1).atDay(1))
 
-            val rows = client.postgrest["transactions"].select(Columns.list("amount", "type", "date")) {
+            val rows = if (DataMode.isLocal) {
+                localRows(start to end).map { AmountTypeDateRow(it.amount, it.type, it.date) }
+            } else client.postgrest["transactions"].select(Columns.list("amount", "type", "date")) {
                 filter {
                     eq("user_id", userId)
                     gte("date", start)
@@ -299,6 +331,7 @@ object TransactionRepository {
     suspend fun getMonthReceived(): Result<Double> = sumByType(TYPE_RECEIVED, monthRange())
 
     private suspend fun sumByType(type: String, range: Pair<String, String>): Result<Double> = withContext(Dispatchers.IO) {
+        if (DataMode.isLocal) return@withContext Result.success(localRows(range).filter { it.type == type }.sumOf { it.amount })
         val userId = client.auth.currentUserOrNull()?.id
             ?: return@withContext Result.failure(Exception("You're not signed in."))
         val (start, end) = range
@@ -342,6 +375,23 @@ object TransactionRepository {
 
     private fun dateRange(zone: ZoneId, start: LocalDate, end: LocalDate): Pair<String, String> =
         start.atStartOfDay(zone).toOffsetDateTime().toString() to end.atStartOfDay(zone).toOffsetDateTime().toString()
+
+    // ───────────── offline mode ─────────────
+
+    private fun localRows(range: Pair<String, String>?): List<LocalTxn> =
+        if (range == null) LocalDb.transactionsBetween(null, null)
+        else LocalDb.transactionsBetween(LocalDb.instantOf(range.first), LocalDb.instantOf(range.second))
+
+    private fun localDetails(range: Pair<String, String>?): List<TransactionDetail> {
+        val names = LocalDb.categories().associate { it.id to it.name }
+        return localRows(range).map { t ->
+            TransactionDetail(
+                id = t.id, amount = t.amount, type = t.type, source = t.source, description = t.description, date = t.date,
+                category = t.category_id?.let { id -> names[id]?.let { TransactionCategoryRef(it) } },
+                recurring_id = t.recurring_id, trip_id = t.trip_id, currency = t.currency
+            )
+        }
+    }
 
     private fun friendlyDbError(e: Throwable): String = when (e) {
         is PostgrestRestException -> e.error

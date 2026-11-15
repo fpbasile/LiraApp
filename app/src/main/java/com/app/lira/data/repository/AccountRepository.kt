@@ -1,5 +1,7 @@
 package com.app.lira.data.repository
 
+import com.app.lira.data.local.DataMode
+import com.app.lira.data.local.LocalDb
 import com.app.lira.data.remote.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.exceptions.HttpRequestException
@@ -24,6 +26,7 @@ object AccountRepository {
      * (e.g. a Supabase Edge Function using the service role) that this app calls instead.
      */
     suspend fun deleteAccountData(): Result<Unit> = withContext(Dispatchers.IO) {
+        if (DataMode.isLocal) { LocalDb.clear(); return@withContext Result.success(Unit) }
         val userId = client.auth.currentUserOrNull()?.id
             ?: return@withContext Result.failure(Exception("You're not signed in."))
 

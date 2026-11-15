@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 13+ themed icon layer: single colour (only alpha is used by the launcher). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:translateX="-1"
+        android:translateY="1">
+        <path
+            android:fillColor="#00000000"
+            android:strokeColor="#F5F5F4"
+            android:strokeWidth="6"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:pathData="M66,57H55V38A11,11 0,0 0,33 38V68A11,11 0,0 0,44 79H70A5.5,5.5 0,0 0,70 68H44V46" />
+        <path
+            android:fillColor="#F5F5F4"
+            android:pathData="M71,57a5,5 0,1 1,10 0a5,5 0,1 1,-10 0z" />
+    </group>
+</vector>

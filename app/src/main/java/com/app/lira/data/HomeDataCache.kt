@@ -5,7 +5,7 @@ import com.app.lira.data.repository.SpendingLimitRepository
 
 /**
  * In-memory snapshot of the home screen's data, populated during the app's session-check
- * splash (see NavGraph) so AddPayedScreen can render real data on its very first frame
+ * splash (see NavGraph) so HomeScreen can render real data on its very first frame
  * instead of an empty/zero state while its own fetch is in flight.
  */
 object HomeDataCache {

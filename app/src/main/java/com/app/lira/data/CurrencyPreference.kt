@@ -5,16 +5,18 @@ import android.content.SharedPreferences
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.app.lira.util.Money
 
+/** Legacy two-currency enum, kept for older call sites. Prefer [CurrencyPreference.code]. */
 enum class Currency(val symbol: String, val label: String) {
     EUR("€", "Euro"),
     USD("$", "US Dollar")
 }
 
 /**
- * There's no currency column anywhere in the schema — this is purely a local display
- * preference, so it's stored on-device (SharedPreferences) rather than in Supabase.
- * `current` is Compose-observable: any composable reading it recomposes when it changes.
+ * The user's home currency (any ISO 4217 code). There's no currency column for home amounts in
+ * the schema — this is a local display preference stored on-device, not a conversion.
+ * Compose-observable: readers recompose when it changes.
  */
 object CurrencyPreference {
     private const val PREFS_NAME = "lira_prefs"
@@ -22,18 +24,25 @@ object CurrencyPreference {
 
     private var prefs: SharedPreferences? = null
 
-    var current by mutableStateOf(Currency.EUR)
+    /** Home currency ISO code, e.g. "EUR". */
+    var code by mutableStateOf("EUR")
         private set
+
+    val symbol: String get() = Money.symbol(code)
+
+    /** Legacy accessor: EUR/USD enum (anything else maps to EUR). */
+    val current: Currency get() = runCatching { Currency.valueOf(code) }.getOrDefault(Currency.EUR)
 
     fun init(context: Context) {
         val store = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         prefs = store
-        val saved = store.getString(KEY_CURRENCY, Currency.EUR.name)
-        current = runCatching { Currency.valueOf(saved ?: Currency.EUR.name) }.getOrDefault(Currency.EUR)
+        code = store.getString(KEY_CURRENCY, "EUR") ?: "EUR"
     }
 
-    fun select(currency: Currency) {
-        current = currency
-        prefs?.edit()?.putString(KEY_CURRENCY, currency.name)?.apply()
+    fun select(newCode: String) {
+        code = newCode.uppercase()
+        prefs?.edit()?.putString(KEY_CURRENCY, code)?.apply()
     }
+
+    fun select(currency: Currency) = select(currency.name)
 }

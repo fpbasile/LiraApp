@@ -1,6 +1,8 @@
 package com.app.lira.data.repository
 
 import com.app.lira.data.model.Recurring
+import com.app.lira.data.local.DataMode
+import com.app.lira.data.local.LocalDb
 import com.app.lira.data.remote.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.exceptions.HttpRequestException
@@ -35,6 +37,7 @@ object RecurringRepository {
     private val client = SupabaseClient.client
 
     suspend fun getRecurring(): Result<List<Recurring>> = withContext(Dispatchers.IO) {
+        if (DataMode.isLocal) return@withContext Result.success(LocalDb.recurring().sortedByDescending { it.start_date })
         val userId = client.auth.currentUserOrNull()?.id
             ?: return@withContext Result.failure(Exception("You're not signed in."))
 
@@ -58,6 +61,17 @@ object RecurringRepository {
         type: String,
         categoryId: Int?
     ): Result<Recurring> = withContext(Dispatchers.IO) {
+        if (DataMode.isLocal) {
+            return@withContext Result.success(
+                LocalDb.addRecurring(
+                    Recurring(
+                        user_id = DataMode.LOCAL_USER, name = name, amount = amount, start_date = startDate, interval = interval,
+                        occurrences = occurrences, type = type,
+                        category_id = if (type == TransactionRepository.TYPE_PAYED) categoryId else null
+                    )
+                )
+            )
+        }
         val userId = client.auth.currentUserOrNull()?.id
             ?: return@withContext Result.failure(Exception("You're not signed in."))
 
@@ -103,6 +117,17 @@ object RecurringRepository {
             occurrences != original.occurrences ||
             type != original.type
 
+        if (DataMode.isLocal) {
+            LocalDb.updateRecurring(id) {
+                it.copy(
+                    name = name, amount = amount, start_date = startDate, interval = interval, occurrences = occurrences, type = type,
+                    category_id = if (type == TransactionRepository.TYPE_PAYED) categoryId else null,
+                    last_posted_date = if (scheduleChanged) LocalDate.now().toString() else it.last_posted_date
+                )
+            }
+            return@withContext Result.success(Unit)
+        }
+
         return@withContext try {
             client.postgrest["recurring"].update({
                 set("name", name)
@@ -125,6 +150,7 @@ object RecurringRepository {
     }
 
     suspend fun deleteRecurring(id: Int): Result<Unit> = withContext(Dispatchers.IO) {
+        if (DataMode.isLocal) return@withContext Result.success(LocalDb.deleteRecurring(id))
         return@withContext try {
             client.postgrest["recurring"].delete { filter { eq("id", id) } }
             Result.success(Unit)
@@ -140,13 +166,13 @@ object RecurringRepository {
      * with nothing new due are skipped.
      */
     suspend fun postDueOccurrences(): Result<Unit> = withContext(Dispatchers.IO) {
-        val userId = client.auth.currentUserOrNull()?.id
+        val userId = if (DataMode.isLocal) DataMode.LOCAL_USER else client.auth.currentUserOrNull()?.id
             ?: return@withContext Result.failure(Exception("You're not signed in."))
 
         return@withContext try {
             val zone = ZoneId.systemDefault()
             val today = LocalDate.now(zone)
-            val entries = client.postgrest["recurring"].select {
+            val entries = if (DataMode.isLocal) LocalDb.recurring() else client.postgrest["recurring"].select {
                 filter { eq("user_id", userId) }
             }.decodeList<Recurring>()
 
@@ -167,7 +193,9 @@ object RecurringRepository {
                     )
                 }
 
-                client.postgrest["recurring"].update({
+                if (DataMode.isLocal) {
+                    LocalDb.updateRecurring(id) { it.copy(last_posted_date = due.last().toString()) }
+                } else client.postgrest["recurring"].update({
                     set("last_posted_date", due.last().toString())
                 }) {
                     filter { eq("id", id) }
