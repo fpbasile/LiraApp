@@ -304,6 +304,12 @@ fun HomeScreen(navController: NavHostController) {
                         suggested?.let { id -> model.category(id)?.let { add(it) } }
                         model.pickedCategory?.let { id -> model.category(id)?.let { if (none { c -> c.id == it.id }) add(it) } }
                         ordered.forEach { c -> if (size < 5 && none { it.id == c.id }) add(c) }
+                    }.toMutableList()
+                    // Amount-based nudge: highlighted in place; if it's not among the visible chips,
+                    // it takes the last slot so the others don't move under the thumb.
+                    val byAmount = if (suggested == null) model.amountSuggestion else null
+                    if (byAmount != null && top.none { it.id == byAmount }) {
+                        model.category(byAmount)?.let { c -> if (top.isNotEmpty()) top[top.lastIndex] = c else top.add(c) }
                     }
                     top.forEach { c ->
                         val look = CategoryStyle.look(c.id, c.name)
@@ -311,6 +317,7 @@ fun HomeScreen(navController: NavHostController) {
                             label = if (c.id == suggested) "${c.name} · suggested" else c.name,
                             icon = look.icon,
                             color = look.color,
+                            hinted = c.id == byAmount,
                             selected = model.pickedCategory == c.id,
                             onClick = { model.tapCategory(c.id) }
                         )

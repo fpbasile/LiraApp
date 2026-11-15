@@ -310,15 +310,24 @@ fun CategoryChip(
     color: Color,
     selected: Boolean = false,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** Likely pick for the typed amount: tinted outline in the category's colour. */
+    hinted: Boolean = false
 ) {
     val source = remember { MutableInteractionSource() }
     val pressed by source.collectIsPressedAsState()
     val scale by animateFloatAsState(if (pressed) 0.95f else 1f, spring(stiffness = 1500f), label = "chip")
+    val hint by animateFloatAsState(if (hinted && !selected) 1f else 0f, tween(180), label = "chipHint")
     Row(
         modifier.scale(scale).height(44.dp).clip(CircleShape)
             .background(if (selected) LiraColors.Surface3 else LiraColors.Surface1)
-            .then(if (selected) Modifier.border(1.5.dp, LiraColors.TextPrimary, CircleShape) else Modifier)
+            .then(
+                when {
+                    selected -> Modifier.border(1.5.dp, LiraColors.TextPrimary, CircleShape)
+                    hint > 0f -> Modifier.border(1.5.dp, color.copy(alpha = 0.85f * hint), CircleShape)
+                    else -> Modifier
+                }
+            )
             .clickable(source, null, role = Role.Button, onClick = onClick)
             .padding(start = 6.dp, end = 14.dp),
         verticalAlignment = Alignment.CenterVertically,

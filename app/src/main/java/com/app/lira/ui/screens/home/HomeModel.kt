@@ -178,6 +178,12 @@ class HomeModel(private val scope: CoroutineScope, val reducedMotion: Boolean) {
 
     fun category(id: Int?): Category? = id?.let { i -> categories.firstOrNull { it.id == i } }
 
+    /** Category suggested by the amount being typed ("3.20" → Coffee), when history is clear about it. */
+    val amountSuggestion: Int? by derivedStateOf {
+        if (income || pickedCategory != null || !hasAmount) null
+        else HomeStats.categoryForAmount(value, entryCurrency, homeCode, visibleTxns)
+    }
+
     /** Categories ordered by usage (computed on open; never reshuffles while visible). */
     val orderedCategories: List<Category> by derivedStateOf {
         val byId = categories.associateBy { it.id }

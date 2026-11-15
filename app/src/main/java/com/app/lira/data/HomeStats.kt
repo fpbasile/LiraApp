@@ -332,6 +332,41 @@ object HomeStats {
             .map { it.value }
     }
 
+    /**
+     * Category the typed [amount] most likely belongs to, from past expenses in the same currency:
+     * close amounts (within ~15%, exact matches count double) logged recently and around this time
+     * of day. Null unless one category clearly dominates — a wrong nudge is worse than none.
+     */
+    fun categoryForAmount(
+        amount: Double,
+        currency: String,
+        home: String,
+        txns: List<HomeTxn>,
+        now: LocalDateTime = LocalDateTime.now()
+    ): Int? {
+        if (amount <= 0.0) return null
+        val score = HashMap<Int, Double>()
+        txns.forEach { t ->
+            val id = t.category_id ?: return@forEach
+            if (t.isIncome || t.recurring_id != null || t.amount <= 0.0) return@forEach
+            if (!(t.currency ?: home).equals(currency, ignoreCase = true)) return@forEach
+            val r = kotlin.math.ln(amount / t.amount) / 0.15
+            if (abs(r) > 2.0) return@forEach
+            var w = kotlin.math.exp(-r * r)
+            if (abs(amount - t.amount) < 0.005) w *= 2.0
+            val local = t.local()
+            if (local != null) {
+                var h = abs(local.hour - now.hour); if (h > 12) h = 24 - h
+                if (h <= 2) w *= 1.3
+                if (local.toLocalDate().isBefore(now.toLocalDate().minusDays(45))) w *= 0.6
+            }
+            score[id] = (score[id] ?: 0.0) + w
+        }
+        val total = score.values.sum()
+        val best = score.maxByOrNull { it.value } ?: return null
+        return if (best.value >= 1.5 && best.value / total >= 0.6) best.key else null
+    }
+
     /** Distinct payers ("from who") of recent income, most frequent first. */
     fun payers(txns: List<HomeTxn>): List<String> =
         txns.filter { it.isIncome && !it.source.isNullOrBlank() }
