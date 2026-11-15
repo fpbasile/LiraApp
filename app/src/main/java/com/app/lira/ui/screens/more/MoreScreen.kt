@@ -115,7 +115,7 @@ fun MoreScreen(navController: NavHostController) {
         launch { CategoryRepository.getCategories().onSuccess { categoryCount = it.size; MoreData.publishCategories(it) } }
         launch { RecurringRepository.getRecurring().onSuccess { recurring = it } }
         launch {
-            TripRepository.getTrips().onSuccess { trips -> activeTrip = trips.firstOrNull { it.is_active }?.name }
+            TripRepository.getTrips().onSuccess { trips -> activeTrip = trips.firstOrNull { it.is_active }?.name?.let { com.app.lira.util.Flags.tripLabel(it) } }
             tripsLoaded = true
         }
         launch { TransactionRepository.getAllTransactions(400).onSuccess { streak = MoreData.streak(it) } }

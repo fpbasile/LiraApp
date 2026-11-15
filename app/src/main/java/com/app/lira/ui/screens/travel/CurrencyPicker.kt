@@ -331,11 +331,6 @@ private fun CurrencyRow(
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Text(
-            com.app.lira.util.Flags.forCurrency(code) ?: "",
-            style = LiraType.BodyL.copy(fontSize = 22.sp),
-            modifier = Modifier.width(30.dp), maxLines = 1
-        )
-        Text(
             code, style = LiraType.BodyM.copy(fontFamily = NumberFont, fontWeight = FontWeight.SemiBold),
             modifier = Modifier.width(48.dp), maxLines = 1
         )

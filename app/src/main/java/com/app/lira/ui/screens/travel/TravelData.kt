@@ -252,16 +252,15 @@ fun formatTripDates(start: LocalDate?, end: LocalDate?, long: Boolean = false): 
         }
         return d.format(java.time.format.DateTimeFormatter.ofPattern(pattern))
     }
-    val thisYear = LocalDate.now().year
+    // The year is always shown ("3 – 12 Mar 2026"), so past and future trips are never ambiguous.
     return when {
         start != null && end != null -> {
             val sameMonth = start.year == end.year && start.month == end.month
-            val showYear = end.year != thisYear
-            if (sameMonth) "${fmt(start, false, false)} – ${fmt(end, true, showYear)}"
-            else "${fmt(start, true, start.year != end.year)} – ${fmt(end, true, showYear)}"
+            if (sameMonth) "${fmt(start, false, false)} – ${fmt(end, true, true)}"
+            else "${fmt(start, true, start.year != end.year)} – ${fmt(end, true, true)}"
         }
-        start != null -> "From ${fmt(start, true, start.year != thisYear)}"
-        else -> "Until ${fmt(end!!, true, end.year != thisYear)}"
+        start != null -> "From ${fmt(start, true, true)}"
+        else -> "Until ${fmt(end!!, true, true)}"
     }
 }
 

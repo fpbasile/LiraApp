@@ -253,7 +253,7 @@ private fun TripHeader(trip: Trip, home: String) {
                 style = LiraType.Label.copy(fontWeight = FontWeight.SemiBold, color = if (trip.is_active) TravelTint else LiraColors.TextTertiary)
             )
         }
-        Text(trip.name, style = LiraType.TitleL)
+        Text(com.app.lira.util.Flags.tripLabel(trip.name), style = LiraType.TitleL)
         Text(
             listOfNotNull(
                 formatTripDates(extras.start ?: TripMode.startDate(trip), extras.end, long = true),
@@ -335,7 +335,7 @@ private fun ByCurrencyCard(totals: TripTotals?, home: String, hasEntries: Boolea
             totals == null -> Text("Converting…", style = LiraType.BodyS)
             else -> totals.byCurrency.forEach { c ->
                 Row(Modifier.fillMaxWidth().height(52.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    CurrencyBadge(c.code)
+                    RoundGlyph(CurrencyCatalog.glyph(c.code))
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
                         Text(CurrencyCatalog.name(c.code), style = LiraType.BodyM.copy(fontSize = 14.sp, fontWeight = FontWeight.Medium), maxLines = 1, overflow = TextOverflow.Ellipsis)
                         val detail = when {

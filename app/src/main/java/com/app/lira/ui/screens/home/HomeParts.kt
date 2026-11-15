@@ -75,7 +75,9 @@ internal fun TripBanner(name: String, dayLabel: String?, currency: String, onCli
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Icon(Icons.Outlined.Flight, null, tint = TravelTint, modifier = Modifier.size(20.dp))
+        val flag = remember(name) { com.app.lira.util.Flags.countriesIn(name).firstOrNull()?.let { com.app.lira.util.Flags.emoji(it) } }
+        if (flag != null) Text(flag, style = LiraType.BodyL.copy(fontSize = 18.sp))
+        else Icon(Icons.Outlined.Flight, null, tint = TravelTint, modifier = Modifier.size(20.dp))
         Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
             Text(name, style = LiraType.Label.copy(fontSize = 14.sp, fontWeight = FontWeight.SemiBold), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
             if (dayLabel != null) Text(" · $dayLabel", style = LiraType.Label.copy(fontSize = 14.sp, fontWeight = FontWeight.Normal, color = LiraColors.TextSecondary), maxLines = 1)

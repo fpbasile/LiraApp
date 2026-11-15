@@ -55,6 +55,9 @@ class TripFormState(
 ) {
     var name by mutableStateOf(name)
     var currencies by mutableStateOf(currencies)
+
+    /** Currencies the user removed by hand — never auto-added again from the name. */
+    val removedByUser = mutableSetOf<String>()
     var start by mutableStateOf(start)
     var end by mutableStateOf(end)
     var budgetRaw by mutableStateOf(budgetRaw)
@@ -99,11 +102,33 @@ fun TripForm(state: TripFormState, homeCode: String, modifier: Modifier = Modifi
             label = "Name"
         )
 
+        // Countries recognised in the name ("Japan" → 🇯🇵): their currencies are added for you.
+        var detected by remember { mutableStateOf<List<String>>(emptyList()) }
+        LaunchedEffect(state.name) {
+            kotlinx.coroutines.delay(300)
+            val regions = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                com.app.lira.util.Flags.countriesIn(state.name)
+            }
+            detected = regions
+            regions.mapNotNull { com.app.lira.util.Flags.currencyOf(it) }.distinct().forEach { code ->
+                if (code !in state.currencies && code !in state.removedByUser && !code.equals(homeCode, true)) {
+                    state.currencies = state.currencies + code
+                }
+            }
+        }
+        if (detected.isNotEmpty()) {
+            Text(
+                detected.joinToString("  ") { "${com.app.lira.util.Flags.emoji(it)} ${com.app.lira.util.Flags.countryName(it)}" },
+                style = LiraType.BodyM.copy(color = LiraColors.TextSecondary),
+                modifier = Modifier.padding(top = 0.dp)
+            )
+        }
+
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             FieldLabel("Currencies")
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 state.currencies.forEach { code ->
-                    CurrencyTag(code, onRemove = { state.currencies = state.currencies - code })
+                    CurrencyTag(code, onRemove = { state.removedByUser += code; state.currencies = state.currencies - code })
                 }
                 Row(
                     Modifier.height(36.dp).clip(CircleShape).border(1.dp, Color(0x24FFFFFF), CircleShape)
@@ -216,9 +241,7 @@ fun CurrencyTag(code: String, onRemove: (() -> Unit)? = null) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        val flag = com.app.lira.util.Flags.forCurrency(code)
-        if (flag != null) Text(flag, style = LiraType.BodyL.copy(fontSize = 18.sp))
-        else CurrencyCatalog.symbolOrNull(code)?.let {
+        CurrencyCatalog.symbolOrNull(code)?.let {
             Text(it, style = LiraType.Label.copy(fontFamily = NumberFont, color = LiraColors.TextSecondary))
         }
         Text(code, style = LiraType.Label.copy(fontWeight = FontWeight.SemiBold))

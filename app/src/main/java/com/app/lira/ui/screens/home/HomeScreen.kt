@@ -485,7 +485,7 @@ private fun EntryArea(
         val tripCodes = model.trip?.let { t -> (t.currencies.map { it.uppercase() } + home.uppercase()).distinct() }.orEmpty()
         if (tripCodes.size >= 2 && model.review == null) {
             SegmentedControl(
-                options = tripCodes.map { c -> com.app.lira.util.Flags.forCurrency(c)?.let { "$it $c" } ?: c },
+                options = tripCodes,
                 selected = tripCodes.indexOfFirst { it.equals(model.entryCurrency, true) }.coerceAtLeast(-1),
                 onSelect = { model.setCurrency(tripCodes[it]) },
                 height = 36.dp
