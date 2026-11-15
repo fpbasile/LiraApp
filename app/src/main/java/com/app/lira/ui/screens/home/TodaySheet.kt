@@ -180,25 +180,48 @@ internal fun TodaySheet(
 private fun BigRing(v: PeriodView, home: String) {
     val limit = v.limit
     Box(Modifier.fillMaxWidth().padding(vertical = 18.dp), contentAlignment = Alignment.Center) {
-        BudgetRing(if (limit != null && limit > 0) (v.spent / limit).toFloat() else 0f, size = 168.dp, stroke = 12.dp) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        val progress = if (limit != null && limit > 0) (v.spent / limit).toFloat() else 0f
+        BudgetRing(progress, size = 184.dp, stroke = 12.dp) {
+            // Stay inside the inner lap (drawn when over the limit), so text never crosses a ring.
+            Column(
+                Modifier.widthIn(max = if (progress > 1f) 112.dp else 140.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
                 if (limit != null) {
                     val left = limit - v.spent
                     val over = left < -0.004
-                    AnimatedMoneyText(kotlin.math.abs(left), home, LiraType.AmountL.copy(color = if (over) LiraColors.OverLimit else LiraColors.Lichen), trimZeros = true)
+                    val big = Money.format(kotlin.math.abs(left), home, trimZeros = true)
+                    AnimatedMoneyText(
+                        kotlin.math.abs(left), home,
+                        LiraType.AmountL.copy(color = if (over) LiraColors.OverLimit else LiraColors.Lichen, fontSize = ringAmountSize(big, progress > 1f)),
+                        trimZeros = true
+                    )
                     Text(if (over) "over ${v.word}" else "left ${v.word}", style = LiraType.BodyS.copy(color = LiraColors.TextSecondary))
                     Text(
-                        "${Money.format(v.spent, home, trimZeros = true)} of ${Money.format(limit, home, trimZeros = true)}",
+                        "${Money.format(v.spent, home, trimZeros = true)} / ${Money.format(limit, home, trimZeros = true)}",
                         style = LiraType.BodyS.copy(fontSize = 12.sp, color = LiraColors.TextTertiary, fontFeatureSettings = "tnum"),
+                        maxLines = 1, softWrap = false,
                         modifier = Modifier.padding(top = 4.dp)
                     )
                 } else {
-                    AnimatedMoneyText(v.spent, home, LiraType.AmountL, trimZeros = true)
+                    AnimatedMoneyText(v.spent, home, LiraType.AmountL.copy(fontSize = ringAmountSize(Money.format(v.spent, home, trimZeros = true), false)), trimZeros = true)
                     Text("spent ${v.word}", style = LiraType.BodyS.copy(color = LiraColors.TextSecondary))
                     Text("No limit set", style = LiraType.BodyS.copy(fontSize = 12.sp, color = LiraColors.TextTertiary), modifier = Modifier.padding(top = 4.dp))
                 }
             }
         }
+    }
+}
+
+/** Big ring number shrinks with its length so "€1,278" still fits inside the ring. */
+private fun ringAmountSize(text: String, inner: Boolean): androidx.compose.ui.unit.TextUnit {
+    val n = text.length + if (inner) 2 else 0
+    return when {
+        n <= 4 -> 40.sp
+        n <= 5 -> 34.sp
+        n <= 6 -> 30.sp
+        n <= 8 -> 25.sp
+        else -> 21.sp
     }
 }
 

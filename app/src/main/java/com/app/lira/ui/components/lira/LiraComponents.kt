@@ -528,7 +528,7 @@ fun TopStrip(
 @Composable
 fun AnimatedMoneyText(value: Double, currencyCode: String, style: TextStyle, modifier: Modifier = Modifier, trimZeros: Boolean = false) {
     val v by animateFloatAsState(value.toFloat(), tween(540, easing = LiraMotion.Settle), label = "count")
-    Text(Money.format(v.toDouble(), currencyCode, trimZeros = trimZeros && kotlin.math.abs(v - value.toFloat()) < 0.005f), style = style, modifier = modifier)
+    Text(Money.format(v.toDouble(), currencyCode, trimZeros = trimZeros && kotlin.math.abs(v - value.toFloat()) < 0.005f), style = style, maxLines = 1, softWrap = false, modifier = modifier)
 }
 
 // ───────────────────────────── Rows & cards ─────────────────────────────

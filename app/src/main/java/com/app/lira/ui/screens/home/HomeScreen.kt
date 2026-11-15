@@ -299,8 +299,11 @@ fun HomeScreen(navController: NavHostController) {
             }
 
             // ── Chips ──
+            val chipScroll = rememberScrollState()
+            // After a save, bring the row back to the start so the usual categories are in view.
+            LaunchedEffect(model.flight?.key) { if (model.flight != null) chipScroll.animateScrollTo(0) }
             Row(
-                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 20.dp),
+                Modifier.fillMaxWidth().horizontalScroll(chipScroll).padding(horizontal = 20.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 if (!model.income) {
