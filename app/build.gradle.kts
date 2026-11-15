@@ -95,6 +95,10 @@ dependencies {
     // --- Home screen widget ---
     implementation("androidx.glance:glance-appwidget:1.1.1")
 
+    // --- Background reminders (notifications, offline auto-backup) ---
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
+    implementation("androidx.documentfile:documentfile:1.0.1")
+
     // --- Utilities ---
     implementation("com.google.accompanist:accompanist-systemuicontroller:0.33.2-alpha")
     implementation("androidx.navigation:navigation-compose:2.8.0")

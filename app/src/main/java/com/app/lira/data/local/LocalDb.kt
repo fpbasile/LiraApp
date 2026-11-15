@@ -114,6 +114,9 @@ object LocalDb {
         }
     }
 
+    /** When the offline file was last written (0 if never) — the auto-backup compares against it. */
+    fun lastModified(): Long = file?.takeIf { it.exists() }?.lastModified() ?: 0L
+
     /** Wipes everything stored offline. */
     fun clear() = mutate { state = LocalState() }
 

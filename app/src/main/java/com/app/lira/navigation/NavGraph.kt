@@ -221,10 +221,6 @@ object HomeEvents {
 @Composable
 private fun SplashScreen() {
     Box(Modifier.fillMaxSize().background(LiraColors.Base), contentAlignment = Alignment.Center) {
-        Image(
-            painter = painterResource(id = R.drawable.lira_logo),
-            contentDescription = "Lira",
-            modifier = Modifier.height(48.dp)
-        )
+        com.app.lira.ui.components.lira.LiraWordmark(size = 44)
     }
 }

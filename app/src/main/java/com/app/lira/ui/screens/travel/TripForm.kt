@@ -216,7 +216,9 @@ fun CurrencyTag(code: String, onRemove: (() -> Unit)? = null) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        CurrencyCatalog.symbolOrNull(code)?.let {
+        val flag = com.app.lira.util.Flags.forCurrency(code)
+        if (flag != null) Text(flag, style = LiraType.BodyL.copy(fontSize = 18.sp))
+        else CurrencyCatalog.symbolOrNull(code)?.let {
             Text(it, style = LiraType.Label.copy(fontFamily = NumberFont, color = LiraColors.TextSecondary))
         }
         Text(code, style = LiraType.Label.copy(fontWeight = FontWeight.SemiBold))

@@ -233,14 +233,25 @@ private fun TripRow(trip: Trip, onOpen: () -> Unit, onMore: () -> Unit) {
         trip.name,
         subtitle = listOfNotNull(
             formatTripDates(extras.start ?: TripMode.startDate(trip), extras.end),
-            trip.currencies.joinToString(", ").ifEmpty { null }
+            trip.currencies.joinToString(" ") { c -> com.app.lira.util.Flags.forCurrency(c)?.let { "$it $c" } ?: c }.ifEmpty { null }
         ).joinToString(" · "),
         leading = {
-            RoundGlyph(text = trip.currencies.firstOrNull()?.let { CurrencyCatalog.glyph(it) } ?: "·")
+            CurrencyBadge(trip.currencies.firstOrNull())
         },
         trailing = { IconCircleButton(Icons.Outlined.MoreVert, "Trip actions", onMore, background = Color.Transparent, tint = LiraColors.TextSecondary, size = 40.dp) },
         onClick = onOpen
     )
+}
+
+/** Round badge for a currency: its flag when it has one, else its symbol/code. */
+@Composable
+internal fun CurrencyBadge(code: String?, size: androidx.compose.ui.unit.Dp = 36.dp) {
+    val flag = code?.let { com.app.lira.util.Flags.forCurrency(it) }
+    if (flag != null) {
+        Box(Modifier.size(size).clip(CircleShape).background(LiraColors.Surface3), contentAlignment = Alignment.Center) {
+            Text(flag, style = LiraType.BodyL.copy(fontSize = (size.value * 0.55f).sp, lineHeight = (size.value * 0.7f).sp))
+        }
+    } else RoundGlyph(text = code?.let { CurrencyCatalog.glyph(it) } ?: "\u00B7", size = size)
 }
 
 /** 36dp surface/3 circle holding a currency glyph or an icon. */

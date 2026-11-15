@@ -111,7 +111,13 @@ fun HomeScreen(navController: NavHostController) {
     }
 
     // Single CONFIRM tick per save.
-    LaunchedEffect(model.saves) { if (model.saves > 0) haptic.performHapticFeedback(HapticFeedbackType.Confirm) }
+    // A save that tips today over the limit gets the "reject" buzz instead (paired with the words on screen).
+    val haptics = com.app.lira.ui.components.lira.rememberLiraHaptics()
+    LaunchedEffect(model.saves) {
+        if (model.saves > 0) {
+            if (!model.income && model.todaySpent > model.effectiveDailyLimit) haptics.reject() else haptics.confirm()
+        }
+    }
 
     // Rate for the current entry currency (conversion line).
     LaunchedEffect(model.entryCurrency, model.homeCode) { model.loadRates() }
@@ -457,6 +463,7 @@ private fun EntryArea(
     onCurrency: () -> Unit,
     onNote: () -> Unit
 ) {
+    val undoHaptics = com.app.lira.ui.components.lira.rememberLiraHaptics()
     val snack = model.snack
     var lastSnack by remember { mutableStateOf<SaveSnack?>(null) }
     if (snack != null) lastSnack = snack
@@ -478,7 +485,7 @@ private fun EntryArea(
         val tripCodes = model.trip?.let { t -> (t.currencies.map { it.uppercase() } + home.uppercase()).distinct() }.orEmpty()
         if (tripCodes.size >= 2 && model.review == null) {
             SegmentedControl(
-                options = tripCodes,
+                options = tripCodes.map { c -> com.app.lira.util.Flags.forCurrency(c)?.let { "$it $c" } ?: c },
                 selected = tripCodes.indexOfFirst { it.equals(model.entryCurrency, true) }.coerceAtLeast(-1),
                 onSelect = { model.setCurrency(tripCodes[it]) },
                 height = 36.dp
@@ -534,7 +541,7 @@ private fun EntryArea(
             enter = if (model.reducedMotion) fadeIn(tween(0)) else fadeIn(tween(200)) + slideInVertically(tween(200, easing = LiraMotion.Standard)) { it / 3 },
             exit = fadeOut(tween(if (model.reducedMotion) 0 else 200))
         ) {
-            lastSnack?.let { SaveSnackbar(it, onUndo = { model.undo() }, reducedMotion = model.reducedMotion) }
+            lastSnack?.let { SaveSnackbar(it, onUndo = { undoHaptics.undo(); model.undo() }, reducedMotion = model.reducedMotion) }
         }
     }
 }

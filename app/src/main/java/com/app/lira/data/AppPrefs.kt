@@ -41,4 +41,9 @@ object AppPrefs {
     var migrateOffline: Boolean
         get() = prefs?.getBoolean("migrate_offline", false) ?: false
         set(v) { prefs?.edit()?.putBoolean("migrate_offline", v)?.commit() }
+
+    /** Keys of subscription suggestions the user marked "Not a subscription" (see SubscriptionDetector). */
+    var dismissedSubscriptions: Set<String>
+        get() = prefs?.getStringSet("dismissed_subscriptions", null)?.toSet() ?: emptySet()
+        set(v) { prefs?.edit()?.putStringSet("dismissed_subscriptions", HashSet(v))?.apply() }
 }

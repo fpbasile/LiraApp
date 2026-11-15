@@ -1,3 +1,9 @@
 <resources>
     <string name="app_name">Lira</string>
+    <string name="tile_quick_add">Log expense</string>
+    <string name="shortcut_add_short">Add expense</string>
+    <string name="shortcut_add_long">Log an expense</string>
+    <string name="shortcut_scan_short">Scan receipt</string>
+    <string name="shortcut_scan_long">Scan a receipt</string>
+    <string name="shortcut_insights_short">Insights</string>
 </resources>

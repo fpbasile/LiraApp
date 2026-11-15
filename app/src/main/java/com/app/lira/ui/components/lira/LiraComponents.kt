@@ -56,6 +56,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.app.lira.ui.theme.LiraColors
 import com.app.lira.ui.theme.LiraMotion
@@ -254,13 +255,13 @@ fun Keypad(
 private fun KeypadButton(modifier: Modifier, label: String?, onClick: () -> Unit, content: @Composable () -> Unit) {
     val source = remember { MutableInteractionSource() }
     val pressed by source.collectIsPressedAsState()
-    val haptic = LocalHapticFeedback.current
+    val haptics = rememberLiraHaptics()
     val bg by animateColorAsState(if (pressed) LiraColors.Surface2 else Color.Transparent, tween(if (pressed) 80 else 120), label = "key")
     val scale by animateFloatAsState(if (pressed) 0.96f else 1f, tween(80), label = "keyScale")
     Box(
         modifier.scale(scale).clip(RoundedCornerShape(18.dp)).background(bg)
             .clickable(source, null, role = Role.Button) {
-                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                haptics.key()
                 onClick()
             }
             .then(if (label != null) Modifier.semantics { contentDescription = label } else Modifier),
@@ -318,6 +319,7 @@ fun CategoryChip(
     val pressed by source.collectIsPressedAsState()
     val scale by animateFloatAsState(if (pressed) 0.95f else 1f, spring(stiffness = 1500f), label = "chip")
     val hint by animateFloatAsState(if (hinted && !selected) 1f else 0f, tween(180), label = "chipHint")
+    val haptics = rememberLiraHaptics()
     Row(
         modifier.scale(scale).height(44.dp).clip(CircleShape)
             .background(if (selected) LiraColors.Surface3 else LiraColors.Surface1)
@@ -328,7 +330,7 @@ fun CategoryChip(
                     else -> Modifier
                 }
             )
-            .clickable(source, null, role = Role.Button, onClick = onClick)
+            .clickable(source, null, role = Role.Button) { haptics.pick(); onClick() }
             .padding(start = 6.dp, end = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -400,6 +402,7 @@ fun SegmentedControl(
     height: Dp = 32.dp,
     background: Color = LiraColors.Surface1
 ) {
+    val haptics = rememberLiraHaptics()
     Row(
         modifier.clip(RoundedCornerShape(height / 2 + 3.dp)).background(background).padding(3.dp),
         horizontalArrangement = Arrangement.spacedBy(2.dp)
@@ -409,7 +412,7 @@ fun SegmentedControl(
             val bg by animateColorAsState(if (active) LiraColors.Surface3 else Color.Transparent, tween(LiraMotion.STANDARD), label = "seg")
             Box(
                 Modifier.height(height - 6.dp).clip(CircleShape).background(bg)
-                    .liraClickable(role = Role.Tab) { onSelect(i) }
+                    .liraClickable(role = Role.Tab) { if (i != selected) haptics.tick(); onSelect(i) }
                     .padding(horizontal = 14.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -832,3 +835,46 @@ fun FloatingNavBar(tabs: List<NavTab>, current: String, onSelect: (String) -> Un
 
 /** Height the floating nav occupies above the gesture inset — pad scrolling content by this. */
 val FloatingNavHeight: Dp = 96.dp
+
+/** "Lira" set in plain type — used on the splash and the welcome screen instead of a drawn logo. */
+@Composable
+fun LiraWordmark(modifier: Modifier = Modifier, size: Int = 40) {
+    Text(
+        "Lira",
+        modifier = modifier,
+        style = LiraType.TitleL.copy(
+            fontFamily = com.app.lira.ui.theme.NumberFont,
+            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+            fontSize = size.sp,
+            lineHeight = size.sp,
+            letterSpacing = (-0.03).em
+        )
+    )
+}
+
+/**
+ * Lira's haptic vocabulary, through the view so the system "touch feedback" setting is respected:
+ * a crisp tap per key, a light click for picks, a firm confirm on save, a reject buzz when a save
+ * goes over the limit, a tick for toggles.
+ */
+class LiraHaptics(private val view: android.view.View) {
+    private fun fire(constant: Int) { view.performHapticFeedback(constant) }
+    fun key() = fire(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
+    fun tick() = fire(android.view.HapticFeedbackConstants.CLOCK_TICK)
+    fun pick() = fire(android.view.HapticFeedbackConstants.CONTEXT_CLICK)
+    fun undo() = fire(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+    fun confirm() = fire(
+        if (android.os.Build.VERSION.SDK_INT >= 30) android.view.HapticFeedbackConstants.CONFIRM
+        else android.view.HapticFeedbackConstants.LONG_PRESS
+    )
+    fun reject() = fire(
+        if (android.os.Build.VERSION.SDK_INT >= 30) android.view.HapticFeedbackConstants.REJECT
+        else android.view.HapticFeedbackConstants.LONG_PRESS
+    )
+}
+
+@Composable
+fun rememberLiraHaptics(): LiraHaptics {
+    val view = androidx.compose.ui.platform.LocalView.current
+    return remember(view) { LiraHaptics(view) }
+}

@@ -123,7 +123,7 @@ private fun OfflineSheet(onConfirm: () -> Unit, onDismiss: () -> Unit) {
 
 @Composable
 private fun Wordmark(height: Int = 40) {
-    Image(painterResource(R.drawable.lira_logo), contentDescription = "Lira", modifier = Modifier.height(height.dp))
+    LiraWordmark(size = height)
 }
 
 @Composable

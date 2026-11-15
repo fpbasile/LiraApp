@@ -8,6 +8,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -21,6 +22,8 @@ import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.FileUpload
 import androidx.compose.material.icons.outlined.CloudUpload
+import androidx.compose.material.icons.outlined.NotificationsNone
+import androidx.compose.material.icons.outlined.Backup
 import androidx.compose.material.icons.outlined.Flight
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Mail
@@ -68,7 +71,7 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private enum class MoreSheet { None, Account, Currency, DeleteAccount, Widget, GoOnline }
+private enum class MoreSheet { None, Account, Currency, DeleteAccount, Widget, GoOnline, Notifications, Backup }
 
 @Composable
 fun MoreScreen(navController: NavHostController) {
@@ -157,6 +160,30 @@ fun MoreScreen(navController: NavHostController) {
         }
     }
 
+    // Notifications need the runtime permission on Android 13+; asked the first time one is turned on.
+    var pendingToggle by remember { mutableStateOf<(() -> Unit)?>(null) }
+    val notifPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) pendingToggle?.invoke() else message = "Notifications are off for Lira in system settings."
+        pendingToggle = null
+    }
+    fun withNotifPermission(action: () -> Unit) {
+        if (com.app.lira.notify.LiraNotifications.canPost(context)) action()
+        else { pendingToggle = action; notifPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS) }
+    }
+
+    val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        runCatching {
+            context.contentResolver.takePersistableUriPermission(
+                uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            )
+        }
+        com.app.lira.data.LiraSettings.chooseBackupFolder(uri.toString())
+        scope.launch {
+            message = com.app.lira.notify.OfflineBackup.run(context).fold({ "Backed up. Lira keeps this file up to date." }, { it.message })
+        }
+    }
+
     fun signedOut() {
         MoreData.clearLocalUserState()
         AuthFlow.startAtLogin = true
@@ -218,6 +245,15 @@ fun MoreScreen(navController: NavHostController) {
             // Account
             SectionLabel("Account", Modifier.padding(top = 10.dp))
             GroupCard {
+                val settings = com.app.lira.data.LiraSettings
+                val onCount = listOf(settings.eveningReminder, settings.limitAlerts, settings.recurringHeadsUp, settings.weeklySummary).count { it }
+                NavRow(
+                    Icons.Outlined.NotificationsNone, "Notifications",
+                    if (onCount == 0 || !com.app.lira.notify.LiraNotifications.canPost(context)) "Off" else "$onCount on"
+                ) { sheet = MoreSheet.Notifications }
+                if (offline) {
+                    NavRow(Icons.Outlined.Backup, "Auto-backup", backupLabel(settings.backupFolder, settings.lastBackupAt)) { sheet = MoreSheet.Backup }
+                }
                 NavRow(Icons.Outlined.Widgets, "Home screen widget") {
                     val mgr = AppWidgetManager.getInstance(context)
                     val requested = runCatching {
@@ -333,6 +369,24 @@ fun MoreScreen(navController: NavHostController) {
                 PrimaryButton("Got it", { sheet = MoreSheet.None }, Modifier.fillMaxWidth())
             }
         }
+        MoreSheet.Notifications -> NotificationsSheet(
+            onToggle = { turnOn, apply -> if (turnOn) withNotifPermission(apply) else apply() },
+            onDismiss = { sheet = MoreSheet.None }
+        )
+        MoreSheet.Backup -> BackupSheet(
+            busy = busy,
+            onPickFolder = { folderPicker.launch(null) },
+            onBackupNow = {
+                scope.launch {
+                    busy = true
+                    message = com.app.lira.notify.OfflineBackup.run(context).fold({ "Backed up just now." }, { it.message })
+                    busy = false
+                    sheet = MoreSheet.None
+                }
+            },
+            onTurnOff = { com.app.lira.data.LiraSettings.chooseBackupFolder(null); sheet = MoreSheet.None },
+            onDismiss = { sheet = MoreSheet.None }
+        )
         MoreSheet.None -> Unit
     }
 }
@@ -480,6 +534,72 @@ private fun AccountSheet(email: String, onDismiss: () -> Unit) {
                     }, Modifier.fillMaxWidth(), loading = saving)
                     GhostButton("Back", { mode = AccountMode.Menu }, Modifier.fillMaxWidth())
                 }
+            }
+        }
+    }
+}
+
+private fun backupLabel(folder: String?, last: Long): String = when {
+    folder == null -> "Off"
+    last == 0L -> "On"
+    else -> {
+        val mins = (System.currentTimeMillis() - last) / 60000
+        when {
+            mins < 1 -> "Just now"
+            mins < 60 -> "$mins min ago"
+            mins < 60 * 24 -> "${mins / 60} h ago"
+            else -> "${mins / (60 * 24)} d ago"
+        }
+    }
+}
+
+@Composable
+private fun NotificationsSheet(onToggle: (turnOn: Boolean, apply: () -> Unit) -> Unit, onDismiss: () -> Unit) {
+    val s = com.app.lira.data.LiraSettings
+    LiraSheet(onDismiss = onDismiss, title = "Notifications") {
+        Column(Modifier.padding(bottom = 12.dp)) {
+            Text(
+                "A few quiet nudges, at most one of each per day.",
+                style = LiraType.BodyM.copy(color = LiraColors.TextSecondary),
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
+            )
+            ToggleRow("Evening reminder", "Only if nothing was logged today", s.eveningReminder) { on -> onToggle(on) { s.setEvening(on) } }
+            if (s.eveningReminder) {
+                val hours = listOf(19, 20, 21, 22)
+                SegmentedControl(
+                    hours.map { "$it:00" },
+                    hours.indexOf(s.eveningHour).coerceAtLeast(0),
+                    { s.setEveningAt(hours[it]) },
+                    Modifier.padding(horizontal = 20.dp).padding(bottom = 8.dp)
+                )
+            }
+            ToggleRow("Limit alerts", "When 80% of today's limit is used, and when you go over", s.limitAlerts) { on -> onToggle(on) { s.setLimit(on) } }
+            ToggleRow("Upcoming recurring", "The day before Lira logs a recurring item", s.recurringHeadsUp) { on -> onToggle(on) { s.setRecurring(on) } }
+            ToggleRow("Weekly summary", "Monday morning: how last week went", s.weeklySummary) { on -> onToggle(on) { s.setWeekly(on) } }
+        }
+    }
+}
+
+@Composable
+private fun BackupSheet(busy: Boolean, onPickFolder: () -> Unit, onBackupNow: () -> Unit, onTurnOff: () -> Unit, onDismiss: () -> Unit) {
+    val s = com.app.lira.data.LiraSettings
+    LiraSheet(onDismiss = onDismiss, title = "Auto-backup") {
+        Column(Modifier.padding(horizontal = 20.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(
+                "Lira keeps a copy of your entries as \"${com.app.lira.notify.OfflineBackup.FILE_NAME}\" in a folder you choose, " +
+                    "and updates it whenever something changes. Pick a Google Drive folder to keep it off this phone.",
+                style = LiraType.BodyM.copy(color = LiraColors.TextSecondary)
+            )
+            Text(
+                "To restore: More → Import entries (CSV), and pick that file.",
+                style = LiraType.BodyS.copy(color = LiraColors.TextTertiary)
+            )
+            if (s.backupFolder == null) {
+                PrimaryButton("Choose a folder", onPickFolder, Modifier.fillMaxWidth())
+            } else {
+                PrimaryButton(if (busy) "Backing up…" else "Back up now", { if (!busy) onBackupNow() }, Modifier.fillMaxWidth())
+                SecondaryButton("Change folder", onPickFolder, Modifier.fillMaxWidth())
+                GhostButton("Turn off", onTurnOff, Modifier.fillMaxWidth())
             }
         }
     }

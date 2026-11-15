@@ -231,3 +231,30 @@ internal fun rawFromAmount(amount: Double, minorDigits: Int): String {
     val s = String.format(Locale.US, "%.${minorDigits}f", amount)
     return if (minorDigits > 0 && s.endsWith("." + "0".repeat(minorDigits))) s.substringBefore('.') else s
 }
+
+/** Settings row with a switch; the whole row toggles. */
+@Composable
+internal fun ToggleRow(title: String, subtitle: String?, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 64.dp).liraClickable { onChange(!checked) }.padding(horizontal = 20.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(title, style = LiraType.BodyM)
+            if (subtitle != null) Text(subtitle, style = LiraType.BodyS.copy(fontSize = 12.sp, color = LiraColors.TextTertiary))
+        }
+        androidx.compose.material3.Switch(
+            checked = checked,
+            onCheckedChange = onChange,
+            colors = androidx.compose.material3.SwitchDefaults.colors(
+                checkedThumbColor = LiraColors.Base,
+                checkedTrackColor = LiraColors.Lichen,
+                checkedBorderColor = LiraColors.Lichen,
+                uncheckedThumbColor = LiraColors.TextTertiary,
+                uncheckedTrackColor = LiraColors.Surface3,
+                uncheckedBorderColor = LiraColors.Surface4
+            )
+        )
+    }
+}

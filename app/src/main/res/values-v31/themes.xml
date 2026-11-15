@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android 12+ draws a system splash with the app icon; keep it a plain dark screen so the
+         only thing shown at launch is the "Lira" text from the in-app splash. -->
+    <style name="Theme.Lira" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/lira_background</item>
+        <item name="android:windowSplashScreenBackground">@color/lira_background</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@android:color/transparent</item>
+    </style>
+</resources>

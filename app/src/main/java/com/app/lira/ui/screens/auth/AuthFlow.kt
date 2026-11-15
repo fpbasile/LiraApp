@@ -3,9 +3,6 @@ package com.app.lira.ui.screens.auth
 import com.app.lira.data.AppPrefs
 import com.app.lira.data.CsvImport
 import com.app.lira.data.local.LocalDb
-import com.app.lira.data.repository.TransactionCategoryRef
-import com.app.lira.data.repository.TransactionDetail
-import com.app.lira.ui.screens.more.MoreData
 import com.app.lira.data.remote.SupabaseClient
 import com.app.lira.data.repository.RecurringRepository
 import com.app.lira.data.repository.SpendingLimitRepository
@@ -48,21 +45,14 @@ internal object AuthFlow {
     suspend fun migrateOfflineIfNeeded(): Boolean {
         if (!AppPrefs.migrateOffline) return false
         val home = com.app.lira.data.CurrencyPreference.code
-        val names = LocalDb.categories().associate { it.id to it.name }
-        val details = LocalDb.transactions().map { t ->
-            TransactionDetail(
-                id = t.id, amount = t.amount, type = t.type, source = t.source, description = t.description, date = t.date,
-                category = t.category_id?.let { id -> names[id]?.let { TransactionCategoryRef(it) } },
-                currency = t.currency
-            )
-        }
-        if (details.isNotEmpty()) {
-            CsvImport.import(MoreData.toCsv(details, home), home).getOrElse { return false }
+        val count = LocalDb.transactions().size
+        if (count > 0) {
+            CsvImport.import(com.app.lira.notify.OfflineBackup.localCsv(), home).getOrElse { return false }
         }
         SpendingLimitRepository.PERIODS.forEach { p -> LocalDb.limit(p)?.let { SpendingLimitRepository.setLimit(p, it) } }
         LocalDb.clear()
         AppPrefs.migrateOffline = false
-        return details.isNotEmpty()
+        return count > 0
     }
 
     suspend fun sendPasswordReset(email: String): Result<Unit> = withContext(Dispatchers.IO) {
