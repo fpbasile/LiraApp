@@ -16,6 +16,7 @@ import androidx.compose.material.icons.automirrored.outlined.TrendingDown
 import androidx.compose.material.icons.automirrored.outlined.TrendingUp
 import androidx.compose.material.icons.automirrored.outlined.Undo
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Close
@@ -402,5 +403,41 @@ internal fun ReadingReceipt() {
             trackColor = LiraColors.Track
         )
         Text("Reading your receipt…", style = LiraType.BodyM.copy(color = LiraColors.TextSecondary))
+    }
+}
+
+/** "🏦 €1,234.50 on account · payday in 9 d" — opens the Wallet. */
+@Composable
+internal fun BalancePill(balance: Double, home: String, daysToPayday: Int?, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val shown by androidx.compose.animation.core.animateFloatAsState(
+        balance.toFloat(), androidx.compose.animation.core.tween(540, easing = com.app.lira.ui.theme.LiraMotion.Settle), label = "bal"
+    )
+    Row(
+        modifier.height(32.dp).clip(CircleShape)
+            .border(1.dp, LiraColors.Line, CircleShape)
+            .liraClickable(onClick = onClick)
+            .padding(start = 10.dp, end = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Icon(
+            androidx.compose.material.icons.Icons.Outlined.AccountBalanceWallet, null,
+            tint = if (balance < 0) LiraColors.OverLimit else androidx.compose.ui.graphics.Color(0xFF8FC79C),
+            modifier = Modifier.size(15.dp)
+        )
+        Text(
+            Money.format(shown.toDouble(), home),
+            style = LiraType.Label.copy(fontSize = 13.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold, fontFeatureSettings = "tnum",
+                color = if (balance < 0) LiraColors.OverLimit else LiraColors.TextPrimary)
+        )
+        Text(
+            when (daysToPayday) {
+                null -> "on account"
+                0 -> "· payday today"
+                1 -> "· payday tomorrow"
+                else -> "· payday in $daysToPayday d"
+            },
+            style = LiraType.Label.copy(fontSize = 13.sp, color = LiraColors.TextTertiary)
+        )
     }
 }

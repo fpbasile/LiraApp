@@ -235,9 +235,9 @@ object RecurringRepository {
             if (!date.isBefore(monthStart) && !alreadyPosted) {
                 result.add(date)
             }
-            date = stepDate(date, recurring.interval)
             count++
             iterations++
+            date = nth(start, recurring.interval, count.toLong())
         }
         return result
     }
@@ -265,9 +265,9 @@ object RecurringRepository {
             if (lastPosted == null || date.isAfter(lastPosted)) {
                 result.add(date)
             }
-            date = stepDate(date, recurring.interval)
             count++
             iterations++
+            date = nth(start, recurring.interval, count.toLong())
         }
         return result
     }
@@ -276,9 +276,7 @@ object RecurringRepository {
     fun finalOccurrenceDate(recurring: Recurring): LocalDate? {
         val occurrences = recurring.occurrences ?: return null
         val start = parseLocalDate(recurring.start_date) ?: return null
-        var date = start
-        repeat((occurrences - 1).coerceAtLeast(0)) { date = stepDate(date, recurring.interval) }
-        return date
+        return nth(start, recurring.interval, (occurrences - 1).coerceAtLeast(0).toLong())
     }
 
     /** 1-based position of [date] within [recurring]'s occurrence sequence, or null if [date] isn't one of its occurrence dates. */
@@ -290,20 +288,14 @@ object RecurringRepository {
         val maxIterations = 5000
         while (!current.isAfter(date) && iterations < maxIterations) {
             if (current == date) return index
-            current = stepDate(current, recurring.interval)
             index++
+            current = nth(start, recurring.interval, (index - 1).toLong())
             iterations++
         }
         return null
     }
 
-    private fun stepDate(date: LocalDate, interval: String): LocalDate = when (interval) {
-        "daily" -> date.plusDays(1)
-        "weekly" -> date.plusWeeks(1)
-        "monthly" -> date.plusMonths(1)
-        "yearly" -> date.plusYears(1)
-        else -> date.plusMonths(1)
-    }
+    fun nth(start: LocalDate, interval: String, n: Long): LocalDate = com.app.lira.data.RecurrenceMath.nth(start, interval, n)
 
     private fun parseLocalDate(isoDate: String): LocalDate? = try {
         LocalDate.parse(isoDate)

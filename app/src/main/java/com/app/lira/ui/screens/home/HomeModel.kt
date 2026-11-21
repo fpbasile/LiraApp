@@ -179,6 +179,26 @@ class HomeModel(private val scope: CoroutineScope, val reducedMotion: Boolean) {
     fun category(id: Int?): Category? = id?.let { i -> categories.firstOrNull { it.id == i } }
 
     /** Category suggested by the amount being typed ("3.20" → Coffee), when history is clear about it. */
+    /**
+     * Bank balance right now: what the user typed in Wallet, moved by every row logged after it —
+     * including the one just saved, before the server has it. Null when no balance is tracked.
+     */
+    val liveBalance: Double? by derivedStateOf {
+        @Suppress("UNUSED_VARIABLE") val v = com.app.lira.data.BalanceRepository.version
+        val anchor = com.app.lira.data.BalanceRepository.cached() ?: return@derivedStateOf null
+        val zone = java.time.ZoneId.systemDefault()
+        val since = java.time.LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(anchor.at), zone)
+        // Home keeps ~120 days of rows; an older balance comes from the Wallet's own fetch.
+        if (since.isBefore(LocalDateTime.now().minusDays(110))) return@derivedStateOf com.app.lira.ui.screens.wallet.WalletData.snapshot?.balance
+        anchor.amount + txns.sumOf { t ->
+            val at = t.local(zone) ?: return@sumOf 0.0
+            if (!at.isAfter(since)) 0.0 else {
+                val a = HomeStats.homeAmount(t, homeCode) ?: 0.0
+                if (t.isIncome) a else -a
+            }
+        }
+    }
+
     val amountSuggestion: Int? by derivedStateOf {
         if (income || pickedCategory != null || !hasAmount) null
         else HomeStats.categoryForAmount(value, entryCurrency, homeCode, visibleTxns)
@@ -417,7 +437,10 @@ class HomeModel(private val scope: CoroutineScope, val reducedMotion: Boolean) {
                 wl - (weekBefore + homeAmt) >= 0 -> "That’s $overBy over today — still ${Money.format(wl - (weekBefore + homeAmt), home)} left this week."
                 else -> "That’s $overBy over today — and ${Money.format(weekBefore + homeAmt - wl, home)} over this week."
             }
-        } else null
+        } else liveBalance?.let { b ->
+            val afterBal = b + if (isIncome) homeAmt else -homeAmt
+            "${Money.format(afterBal, home)} left on your account."
+        }
 
         val l = LastSave(tempId, if (amountOverride != null) "" else raw, isIncome, currencyOverride)
         last = l

@@ -252,6 +252,18 @@ fun HomeScreen(navController: NavHostController) {
                 )
             }
 
+            // Live bank balance (Wallet) — moves the moment something is saved.
+            val balance = model.liveBalance
+            LaunchedEffect(Unit) { if (com.app.lira.ui.screens.wallet.WalletData.snapshot == null) com.app.lira.ui.screens.wallet.WalletData.refresh() }
+            if (balance != null && model.review == null) {
+                BalancePill(
+                    balance = balance, home = home,
+                    daysToPayday = com.app.lira.ui.screens.wallet.WalletData.snapshot?.daysToPayday,
+                    onClick = { navController.navigateToTab(Routes.WALLET) },
+                    modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 10.dp)
+                )
+            }
+
             // ── Amount area ──
             val density = LocalDensity.current
             Box(

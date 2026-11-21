@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.Insights
 import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.runtime.Composable
@@ -73,6 +74,7 @@ object Routes {
     // Main tabs (floating nav). Travel is a mode, not a tab.
     const val HOME = "home"
     const val INSIGHTS = "insights"
+    const val WALLET = "wallet"
     const val MORE = "more"
 
     const val MANAGE_CATEGORIES = "manage_categories"
@@ -99,6 +101,7 @@ object Routes {
 
 private val mainTabs = listOf(
     NavTab(Routes.HOME, "Home", Icons.Outlined.Home),
+    NavTab(Routes.WALLET, "Wallet", Icons.Outlined.AccountBalanceWallet),
     NavTab(Routes.INSIGHTS, "Insights", Icons.Outlined.Insights),
     NavTab(Routes.MORE, "More", Icons.Outlined.MoreHoriz)
 )
@@ -169,6 +172,7 @@ fun NavGraph(navController: NavHostController) {
             composable(Routes.ONBOARDING) { OnboardingScreen(navController) }
             composable(Routes.HOME) { HomeScreen(navController) }
             composable(Routes.INSIGHTS) { InsightsScreen(navController) }
+            composable(Routes.WALLET) { com.app.lira.ui.screens.wallet.WalletScreen(navController) }
             composable(Routes.MORE) { MoreScreen(navController) }
             composable(Routes.MANAGE_CATEGORIES) { CategoriesScreen(navController) }
             composable(Routes.RECURRING) { RecurringListScreen(navController) }

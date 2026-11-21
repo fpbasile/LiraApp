@@ -34,6 +34,8 @@ object AccountRepository {
             client.postgrest["transactions"].delete { filter { eq("user_id", userId) } }
             client.postgrest["recurring"].delete { filter { eq("user_id", userId) } }
             client.postgrest["daily_limit"].delete { filter { eq("user_id", userId) } }
+            runCatching { client.postgrest["bank_balance"].delete { filter { eq("user_id", userId) } } }
+            com.app.lira.data.AppPrefs.clearBankBalance(userId)
             client.postgrest["users"].delete { filter { eq("id", userId) } }
             client.auth.signOut()
             Result.success(Unit)

@@ -46,4 +46,19 @@ object AppPrefs {
     var dismissedSubscriptions: Set<String>
         get() = prefs?.getStringSet("dismissed_subscriptions", null)?.toSet() ?: emptySet()
         set(v) { prefs?.edit()?.putStringSet("dismissed_subscriptions", HashSet(v))?.apply() }
+
+    /** Bank balance the user typed, and when (epoch ms) — per account. Lira moves it with every entry after that. */
+    fun bankBalance(user: String): Pair<Double, Long>? {
+        val p = prefs ?: return null
+        val amount = p.getString("bank_balance_$user", null)?.toDoubleOrNull() ?: return null
+        return amount to p.getLong("bank_balance_at_$user", 0L)
+    }
+
+    fun setBankBalance(user: String, amount: Double, at: Long = System.currentTimeMillis()) {
+        prefs?.edit()?.putString("bank_balance_$user", amount.toString())?.putLong("bank_balance_at_$user", at)?.apply()
+    }
+
+    fun clearBankBalance(user: String) {
+        prefs?.edit()?.remove("bank_balance_$user")?.remove("bank_balance_at_$user")?.apply()
+    }
 }

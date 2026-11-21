@@ -57,8 +57,8 @@ import java.util.Locale
 import kotlin.math.roundToInt
 
 /**
- * No feature tour: two questions (home currency, daily limit), then the real Home with a
- * first-log coach card (step 3 of 3, drawn by Home from AppPrefs.showFirstLogCoach).
+ * No feature tour: three questions (home currency, daily limit, stable income + bank balance),
+ * then the real Home with a first-log coach card (step 4 of 4, drawn by Home from AppPrefs.showFirstLogCoach).
  */
 @Composable
 fun OnboardingScreen(navController: NavHostController) {
@@ -86,7 +86,7 @@ fun OnboardingScreen(navController: NavHostController) {
         return
     }
 
-    BackHandler(enabled = step == 1) { step = 0 }
+    BackHandler(enabled = step > 0) { step -= 1 }
 
     fun finish() {
         AppPrefs.onboardingDone = true
@@ -102,15 +102,15 @@ fun OnboardingScreen(navController: NavHostController) {
             // Step header: back · progress (3 steps; the third is the first log on Home) · skip
             Row(Modifier.fillMaxWidth().height(56.dp).padding(start = 8.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.width(72.dp)) {
-                    if (step == 1) IconCircleButton(
-                        Icons.AutoMirrored.Outlined.ArrowBack, "Back", { step = 0 }, background = Color.Transparent
+                    if (step > 0) IconCircleButton(
+                        Icons.AutoMirrored.Outlined.ArrowBack, "Back", { step -= 1 }, background = Color.Transparent
                     )
                 }
                 Row(
-                    Modifier.weight(1f).semantics { contentDescription = "Step ${step + 1} of 3" },
+                    Modifier.weight(1f).semantics { contentDescription = "Step ${step + 1} of 4" },
                     horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally)
                 ) {
-                    repeat(3) { i ->
+                    repeat(4) { i ->
                         val c = when {
                             i == step -> LiraColors.TextPrimary
                             i < step -> LiraColors.TextSecondary
@@ -120,7 +120,10 @@ fun OnboardingScreen(navController: NavHostController) {
                     }
                 }
                 Box(Modifier.width(72.dp), contentAlignment = Alignment.CenterEnd) {
-                    if (step == 1) GhostButton("Skip", { finish() })
+                    when (step) {
+                        1 -> GhostButton("Skip", { step = 2 })
+                        2 -> GhostButton("Skip", { finish() })
+                    }
                 }
             }
 
@@ -140,8 +143,10 @@ fun OnboardingScreen(navController: NavHostController) {
                         onSelect = { currency = it },
                         onContinue = { CurrencyPreference.select(currency); step = 1 }
                     )
+                } else if (s == 1) {
+                    LimitStep(code = currency, onDone = { step = 2 })
                 } else {
-                    LimitStep(code = currency, onDone = { finish() })
+                    com.app.lira.ui.screens.wallet.IncomeStep(home = currency, onDone = { finish() })
                 }
             }
         }
